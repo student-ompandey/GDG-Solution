@@ -32,6 +32,8 @@ router.get('/health', (req, res) => {
   });
 });
 
+const chatRoutes = require('./chat.routes');
+
 // Mount sub-routers
 router.use('/auth', authRoutes);
 router.use('/scan/url', urlRoutes);
@@ -39,5 +41,6 @@ router.use('/scan/message', messageRoutes);
 router.use('/scan/qr', qrRoutes);
 router.use('/scan/image', imageRoutes);
 router.use('/history', historyRoutes);
+router.use('/chat', chatRoutes);
 
 module.exports = router;

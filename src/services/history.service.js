@@ -17,13 +17,16 @@ const createEntry = async (data) => {
  * @returns {Promise<object>}
  */
 const getUserHistory = async (userId, options = {}) => {
-  const { page = 1, limit = 20, type } = options;
+  const { page = 1, limit = 20, type, result } = options;
   const skip = (page - 1) * limit;
 
-  const filter = { user: userId };
+  const filter = {};
+  // If authenticated, show user's scans; otherwise show all recent scans
+  if (userId) filter.user = userId;
   if (type) filter.type = type;
+  if (result) filter.result = result;
 
-  const [entries, total] = await Promise.all([
+  const [scans, total] = await Promise.all([
     ScanHistory.find(filter)
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -33,7 +36,7 @@ const getUserHistory = async (userId, options = {}) => {
   ]);
 
   return {
-    entries,
+    scans,
     pagination: {
       total,
       page: parseInt(page, 10),

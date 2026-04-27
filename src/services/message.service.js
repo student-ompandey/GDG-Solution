@@ -1,7 +1,7 @@
 const logger = require('../utils/logger');
-const { OPENAI_API_KEY } = require('../config/env');
 const { buildScanResponse } = require('../utils/riskLevel');
 const { MESSAGE_SIGNALS, createSignal } = require('../utils/signals');
+const aiService = require('./ai.service');
 
 // ── Keyword database ─────────────────────────
 
@@ -69,22 +69,23 @@ const URGENCY_PATTERNS = [
 ];
 
 // ──────────────────────────────────────────────
-// Main message analysis — signal-based
+// Main message analysis — signal-based + Gemini AI
 // ──────────────────────────────────────────────
 
 /**
- * Analyse a text message for scam indicators using signals.
+ * Analyse a text message for scam indicators using signals + Gemini AI.
  * @param {string} message
+ * @param {object} [options] - { lang: 'en' | 'hi' }
  * @returns {Promise<object>}
  */
-const analyzeMessage = async (message) => {
+const analyzeMessage = async (message, options = {}) => {
   const signals = [];
   const explanations = [];
   const detectedKeywords = [];
   const categories = new Set();
   const lower = message.toLowerCase();
 
-  // 1. Keyword matching
+  // ── 1. Keyword matching ────────────────────
   let hasHighRisk = false;
   for (const [kw, meta] of Object.entries(SCAM_KEYWORDS)) {
     if (lower.includes(kw)) {
@@ -102,7 +103,7 @@ const analyzeMessage = async (message) => {
     explanations.push(`Contains high-risk keywords in: ${[...categories].filter((c) => ['Credential Theft', 'Financial Fraud', 'Identity Theft', 'Prize Scam'].includes(c)).join(', ')}`);
   }
 
-  // 2. Urgency patterns
+  // ── 2. Urgency patterns ────────────────────
   const urgency = [];
   for (const p of URGENCY_PATTERNS) {
     if (p.regex.test(message)) urgency.push(p.label);
@@ -112,27 +113,27 @@ const analyzeMessage = async (message) => {
     explanations.push(`Uses pressure tactics: ${[...new Set(urgency)].join(', ')}`);
   }
 
-  // 3. Excessive caps
+  // ── 3. Excessive caps ──────────────────────
   const capsWords = message.split(/\s+/).filter((w) => w.length > 3 && w === w.toUpperCase() && /[A-Z]/.test(w));
   if (capsWords.length >= 3) {
     signals.push(createSignal(MESSAGE_SIGNALS.EXCESSIVE_CAPS));
     explanations.push('Uses excessive ALL CAPS to create urgency');
   }
 
-  // 4. Excessive punctuation
+  // ── 4. Excessive punctuation ───────────────
   if ((message.match(/[!?]{2,}/g) || []).length >= 2) {
     signals.push(createSignal(MESSAGE_SIGNALS.EXCESSIVE_PUNCTUATION));
     explanations.push('Uses excessive punctuation (!!!, ???)');
   }
 
-  // 5. Money mentions
+  // ── 5. Money mentions ──────────────────────
   const money = message.match(/[\$₹€£¥]\s?\d+[\d,.]*/g) || message.match(/\d+[\d,.]*\s?(dollars?|rupees?|USD|INR)/gi) || [];
   if (money.length > 0) {
     signals.push(createSignal(MESSAGE_SIGNALS.MONEY_MENTION, `Amounts: ${money.slice(0, 3).join(', ')}`));
     explanations.push(`Mentions monetary amounts: ${money.slice(0, 2).join(', ')}`);
   }
 
-  // 6. Links
+  // ── 6. Embedded links ──────────────────────
   const urls = message.match(/https?:\/\/[^\s]+/gi) || [];
   if (urls.length > 0 && message.split(/\s+/).length < 30) {
     signals.push(createSignal(MESSAGE_SIGNALS.SHORT_MSG_WITH_LINK));
@@ -142,58 +143,83 @@ const analyzeMessage = async (message) => {
     explanations.push(`Contains ${urls.length} embedded link(s)`);
   }
 
-  // 7. Phone number
+  // ── 7. Phone number ────────────────────────
   if (/\b(\+?\d{1,3}[-.\s]?)?(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}\b/.test(message)) {
     signals.push(createSignal(MESSAGE_SIGNALS.PHONE_SOLICITATION));
     explanations.push('Contains phone number (may solicit calls)');
   }
 
-  // 8. AI classification
+  // ── 8. Gemini AI Classification (primary) ──
   let aiClassification = null;
+  let aiExplanation = null;
+  let aiIntent = null;
+  let aiTactics = [];
+
   try {
-    const ai = await classifyWithAI(message);
-    aiClassification = ai.classification;
-    if (ai.classification === 'scam') {
-      signals.push(createSignal(MESSAGE_SIGNALS.AI_SCAM_DETECTED, `AI: scam (${(ai.confidence * 100).toFixed(0)}% confidence)`));
-      explanations.push(`AI classified this message as "scam"`);
-    } else if (ai.classification === 'spam') {
-      signals.push(createSignal(MESSAGE_SIGNALS.AI_SPAM_DETECTED, `AI: spam (${(ai.confidence * 100).toFixed(0)}% confidence)`));
-      explanations.push(`AI classified this message as "spam"`);
-    } else if (ai.classification === 'suspicious') {
-      signals.push(createSignal(MESSAGE_SIGNALS.AI_SUSPICIOUS, `AI: suspicious (${(ai.confidence * 100).toFixed(0)}% confidence)`));
-      explanations.push(`AI classified this message as "suspicious"`);
+    const geminiResult = await aiService.classifyMessage(message);
+    if (geminiResult) {
+      aiClassification = geminiResult.classification;
+      aiExplanation = geminiResult.explanation;
+      aiIntent = geminiResult.intent;
+      aiTactics = geminiResult.tactics || [];
+
+      if (geminiResult.classification === 'scam') {
+        signals.push(createSignal(MESSAGE_SIGNALS.AI_SCAM_DETECTED, `Gemini AI: scam (${(geminiResult.confidence * 100).toFixed(0)}% confidence)`));
+        if (geminiResult.explanation) explanations.push(`AI Analysis: ${geminiResult.explanation}`);
+      } else if (geminiResult.classification === 'spam') {
+        signals.push(createSignal(MESSAGE_SIGNALS.AI_SPAM_DETECTED, `Gemini AI: spam (${(geminiResult.confidence * 100).toFixed(0)}% confidence)`));
+        if (geminiResult.explanation) explanations.push(`AI Analysis: ${geminiResult.explanation}`);
+      } else if (geminiResult.classification === 'suspicious') {
+        signals.push(createSignal(MESSAGE_SIGNALS.AI_SUSPICIOUS, `Gemini AI: suspicious (${(geminiResult.confidence * 100).toFixed(0)}% confidence)`));
+        if (geminiResult.explanation) explanations.push(`AI Analysis: ${geminiResult.explanation}`);
+      }
     }
   } catch (err) {
-    logger.warn(`AI skipped: ${err.message}`);
+    logger.warn(`Gemini AI skipped: ${err.message}`);
   }
 
-  return buildScanResponse({
+  // ── Build response ─────────────────────────
+  const response = buildScanResponse({
     type: 'message',
     input: message.substring(0, 200) + (message.length > 200 ? '...' : ''),
     signals,
     explanation: explanations,
-    details: { detectedKeywords, categories: [...categories], urgencyPatterns: [...new Set(urgency)], aiClassification, messageLength: message.length, wordCount: message.split(/\s+/).length },
+    details: {
+      detectedKeywords,
+      categories: [...categories],
+      urgencyPatterns: [...new Set(urgency)],
+      aiClassification,
+      aiExplanation,
+      aiIntent,
+      aiTactics,
+      messageLength: message.length,
+      wordCount: message.split(/\s+/).length,
+    },
   });
-};
 
-// ── OpenAI classification ────────────────────
+  // ── 9. Enhanced AI explanation ─────────────
+  if (signals.length > 0 && response.riskScore > 20) {
+    try {
+      const enhanced = await aiService.enhanceExplanation(
+        'message', message, explanations, response.riskScore
+      );
+      if (enhanced) response.aiSummary = enhanced;
+    } catch (err) {
+      logger.warn(`Explanation enhancement skipped: ${err.message}`);
+    }
+  }
 
-const classifyWithAI = async (message) => {
-  if (!OPENAI_API_KEY) return { classification: null, confidence: null };
-  try {
-    const OpenAI = require('openai');
-    const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'Classify the message as "scam", "spam", "suspicious", or "legitimate". Respond ONLY with JSON: {"classification": "<class>", "confidence": <0.0-1.0>}' },
-        { role: 'user', content: message },
-      ],
-      max_tokens: 100, temperature: 0.1,
-    });
-    const parsed = JSON.parse(completion.choices[0].message.content.trim().replace(/```json\n?/g, '').replace(/```\n?/g, ''));
-    return { classification: parsed.classification, confidence: parsed.confidence || 0.8 };
-  } catch (e) { logger.error(`OpenAI: ${e.message}`); return { classification: null, confidence: null }; }
+  // ── 10. Hindi translation (if requested) ───
+  if (options.lang === 'hi') {
+    try {
+      const hindi = await aiService.translateToHindi(response);
+      if (hindi) response.hindi = hindi;
+    } catch (err) {
+      logger.warn(`Hindi translation skipped: ${err.message}`);
+    }
+  }
+
+  return response;
 };
 
 module.exports = { analyzeMessage };

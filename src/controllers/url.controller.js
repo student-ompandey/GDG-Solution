@@ -9,14 +9,11 @@ const asyncHandler = require('../utils/asyncHandler');
  */
 const analyze = asyncHandler(async (req, res) => {
   const { url } = req.body;
+  const lang = req.query.lang || req.body.lang || 'en';
 
-  // Delegate all business logic to the service layer
-  const result = await analyzeUrl(url);
+  const result = await analyzeUrl(url, { lang });
 
-  // Map riskScore to history-compatible result
   const historyResult = result.riskScore >= 70 ? 'dangerous' : result.riskScore >= 40 ? 'suspicious' : 'safe';
-
-  // Persist scan to history
   await historyService.createEntry({
     user: req.user ? req.user._id : null,
     type: 'url',

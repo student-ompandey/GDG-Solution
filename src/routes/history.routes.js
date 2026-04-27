@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect, authorize } = require('../middlewares/auth.middleware');
+const { protect, optionalAuth, authorize } = require('../middlewares/auth.middleware');
 const historyController = require('../controllers/history.controller');
 
 /**
@@ -38,7 +38,7 @@ const historyController = require('../controllers/history.controller');
  *       200:
  *         description: Paginated scan history
  */
-router.get('/', protect, historyController.getHistory);
+router.get('/', optionalAuth, historyController.getHistory);
 
 /**
  * @swagger

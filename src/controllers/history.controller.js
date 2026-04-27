@@ -9,10 +9,12 @@ const asyncHandler = require('../utils/asyncHandler');
  * @access  Protected
  */
 const getHistory = asyncHandler(async (req, res) => {
-  const { page, limit, type } = req.query;
+  const { page, limit, type, result } = req.query;
 
-  const data = await historyService.getUserHistory(req.user._id, {
-    page, limit, type,
+  // If authenticated, show user's scans; otherwise show recent public scans
+  const userId = req.user ? req.user._id : null;
+  const data = await historyService.getUserHistory(userId, {
+    page, limit, type, result,
   });
 
   new ApiResponse(200, 'Scan history retrieved', data).send(res);

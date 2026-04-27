@@ -2,6 +2,7 @@ const logger = require('../utils/logger');
 const { GOOGLE_SAFE_BROWSING_API_KEY } = require('../config/env');
 const { buildScanResponse } = require('../utils/riskLevel');
 const { URL_SIGNALS, createSignal } = require('../utils/signals');
+const aiService = require('./ai.service');
 
 // ── Pattern databases ────────────────────────
 
@@ -61,11 +62,12 @@ const isRandomDomain = (hostname) => {
 // ──────────────────────────────────────────────
 
 /**
- * Analyse a URL for phishing/scam indicators using signals.
+ * Analyse a URL for phishing/scam indicators using signals + Gemini AI.
  * @param {string} url
+ * @param {object} [options] - { lang: 'en' | 'hi' }
  * @returns {Promise<object>}
  */
-const analyzeUrl = async (url) => {
+const analyzeUrl = async (url, options = {}) => {
   const signals = [];
   const explanations = [];
 
@@ -174,7 +176,29 @@ const analyzeUrl = async (url) => {
     explanations.push('URL could not be parsed (malformed)');
   }
 
-  return buildScanResponse({ type: 'url', input: url, signals, explanation: explanations, details: { totalChecks: 14, flaggedChecks: signals.length } });
+  const response = buildScanResponse({ type: 'url', input: url, signals, explanation: explanations, details: { totalChecks: 14, flaggedChecks: signals.length } });
+
+  // AI-enhanced explanation
+  if (signals.length > 0 && response.riskScore > 20) {
+    try {
+      const enhanced = await aiService.enhanceExplanation('url', url, explanations, response.riskScore);
+      if (enhanced) response.aiSummary = enhanced;
+    } catch (err) {
+      logger.warn(`AI explanation skipped: ${err.message}`);
+    }
+  }
+
+  // Hindi translation (if requested)
+  if (options.lang === 'hi') {
+    try {
+      const hindi = await aiService.translateToHindi(response);
+      if (hindi) response.hindi = hindi;
+    } catch (err) {
+      logger.warn(`Hindi translation skipped: ${err.message}`);
+    }
+  }
+
+  return response;
 };
 
 // ── Google Safe Browsing ─────────────────────

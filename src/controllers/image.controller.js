@@ -13,13 +13,10 @@ const analyze = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Please upload an image file to analyse');
   }
 
-  // Delegate all business logic to the service layer
-  const result = await analyzeImage(req.file.path, req.file.originalname);
+  const lang = req.query.lang || req.body.lang || 'en';
+  const result = await analyzeImage(req.file.path, req.file.originalname, { lang });
 
-  // Map riskScore to history-compatible result
   const historyResult = result.riskScore >= 70 ? 'dangerous' : result.riskScore >= 40 ? 'suspicious' : 'safe';
-
-  // Persist scan to history
   await historyService.createEntry({
     user: req.user ? req.user._id : null,
     type: 'image',

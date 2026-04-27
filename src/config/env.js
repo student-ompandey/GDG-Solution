@@ -22,6 +22,7 @@ const env = {
   GOOGLE_SAFE_BROWSING_API_KEY:
     process.env.GOOGLE_SAFE_BROWSING_API_KEY || '',
   OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
 
   // Rate limiting
   RATE_LIMIT_WINDOW_MS:
