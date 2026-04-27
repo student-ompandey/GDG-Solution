@@ -1,4 +1,4 @@
-# 🛡️ Scam Detection Platform
+# 🛡️ Scam Detection Platform  -----
 
 A production-ready backend API for detecting phishing URLs, scam messages, malicious QR codes, and fraudulent images. Built with **Node.js**, **Express.js**, and **MongoDB**.
 
