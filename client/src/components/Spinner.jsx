@@ -1,40 +1,40 @@
-import { Shield } from 'lucide-react';
+import { Terminal } from 'lucide-react';
 
 const scanningMessages = [
-  'Analyzing for potential scams...',
-  'Checking against known threat patterns...',
-  'Running AI-powered detection...',
-  'Scanning for suspicious content...',
+  'INITIALIZING_HEURISTICS...',
+  'CROSS_REFERENCING_THREAT_DB...',
+  'ANALYZING_PAYLOAD_VECTORS...',
+  'EXECUTING_NEURAL_FILTERS...',
 ];
 
 export default function Spinner({ text }) {
   const displayText = text || scanningMessages[Math.floor(Math.random() * scanningMessages.length)];
 
   return (
-    <div className="mt-8 flex flex-col items-center gap-4">
-      {/* Animated shield scanner */}
+    <div className="mt-8 flex flex-col items-center gap-5">
+      {/* Animated terminal scanner */}
       <div className="relative flex items-center justify-center">
         {/* Outer ring */}
-        <div className="absolute h-20 w-20 animate-spin rounded-full border-2 border-transparent border-t-indigo-500 border-r-indigo-500/30" style={{ animationDuration: '1.5s' }} />
+        <div className="absolute h-20 w-20 animate-spin rounded-full border border-transparent border-t-[var(--color-signal)] border-r-[var(--color-signal)]/20" style={{ animationDuration: '1.5s' }} />
         {/* Middle ring */}
-        <div className="absolute h-16 w-16 animate-spin rounded-full border-2 border-transparent border-b-purple-500 border-l-purple-500/30" style={{ animationDuration: '2s', animationDirection: 'reverse' }} />
+        <div className="absolute h-16 w-16 animate-spin rounded-full border border-transparent border-b-[var(--color-charcoal)] border-l-[var(--color-charcoal)]/50" style={{ animationDuration: '2s', animationDirection: 'reverse' }} />
         {/* Center icon */}
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500/20 ring-1 ring-indigo-500/30">
-          <Shield className="h-6 w-6 text-indigo-400 animate-pulse" />
+        <div className="flex h-12 w-12 items-center justify-center rounded border border-[var(--color-charcoal)] bg-[var(--color-abyss)] shadow-[0_0_10px_rgba(0,217,146,0.1)]">
+          <Terminal className="h-5 w-5 text-[var(--color-signal)] animate-pulse" />
         </div>
       </div>
 
       {/* Text */}
-      <div className="text-center">
-        <p className="text-sm font-medium text-slate-300 animate-pulse">{displayText}</p>
-        <p className="mt-1 text-xs text-slate-500">This may take a few seconds</p>
+      <div className="text-center font-mono">
+        <p className="text-[11px] font-bold tracking-widest text-[var(--color-signal)] animate-pulse uppercase">{displayText}</p>
+        <p className="mt-2 text-[10px] text-[var(--color-steel)] uppercase tracking-widest">AWAITING_SYSTEM_RESPONSE</p>
       </div>
 
       {/* Progress dots */}
-      <div className="flex gap-1.5">
-        <div className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-        <div className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-        <div className="h-1.5 w-1.5 rounded-full bg-indigo-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+      <div className="flex gap-2">
+        <div className="h-1.5 w-1.5 rounded-sm bg-[var(--color-signal)] animate-bounce shadow-[0_0_5px_rgba(0,217,146,0.5)]" style={{ animationDelay: '0ms' }} />
+        <div className="h-1.5 w-1.5 rounded-sm bg-[var(--color-signal)] animate-bounce shadow-[0_0_5px_rgba(0,217,146,0.5)]" style={{ animationDelay: '150ms' }} />
+        <div className="h-1.5 w-1.5 rounded-sm bg-[var(--color-signal)] animate-bounce shadow-[0_0_5px_rgba(0,217,146,0.5)]" style={{ animationDelay: '300ms' }} />
       </div>
     </div>
   );

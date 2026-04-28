@@ -63,7 +63,7 @@ const login = asyncHandler(async (req, res) => {
 const getProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   new ApiResponse(200, 'Profile retrieved', {
-    id: user._id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt,
+    id: user._id, name: user.name, email: user.email, role: user.role, avatar: user.avatar, createdAt: user.createdAt,
   }).send(res);
 });
 

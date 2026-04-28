@@ -19,10 +19,12 @@ app.use(cors({ origin: '*' }));          // Enable CORS (configure for productio
 app.use(rateLimiter);                    // Rate limiting
 
 // ──────────────────────────────────────────────
-// Body Parsing
+// Body Parsing & Static Files
 // ──────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ──────────────────────────────────────────────
 // Logging

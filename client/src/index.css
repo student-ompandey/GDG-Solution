@@ -1,34 +1,69 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --color-brand: #6366f1;
-  --color-brand-light: #818cf8;
-  --color-brand-dark: #4f46e5;
-  --color-surface: #0f172a;
-  --color-surface-light: #1e293b;
-  --color-surface-lighter: #334155;
+  --font-display: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  /* VoltAgent Palette */
+  --color-abyss: #050507;
+  --color-carbon: #101010;
+  --color-charcoal: #3d3a39;
+  
+  --color-signal: #00d992;
+  --color-mint: #2fd6a1;
+  --color-soft-purple: #818cf8;
+  
+  --color-snow: #f2f2f2;
+  --color-parchment: #b8b3b0;
+  --color-steel: #8b949e;
+  
+  --shadow-ambient: rgba(92, 88, 85, 0.2) 0px 0px 15px;
+  --shadow-dramatic: rgba(0, 0, 0, 0.7) 0px 20px 60px, rgba(148, 163, 184, 0.1) 0px 0px 0px 1px inset;
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #020617;
-  color: #e2e8f0;
+  background-color: var(--color-abyss);
+  color: var(--color-snow);
   min-height: 100vh;
+  font-feature-settings: "calt" 1, "rlig" 1;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #0f172a; }
-::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-/* Spinner animation */
-@keyframes spin-slow {
-  to { transform: rotate(360deg); }
+h1, h2, h3, h4, h5, h6, .font-display {
+  font-family: var(--font-display);
+  font-feature-settings: "calt" 1, "rlig" 1;
 }
-.animate-spin-slow {
-  animation: spin-slow 1.5s linear infinite;
+
+code, pre, .font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Custom scrollbar - Darker for VoltAgent theme */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-abyss); }
+::-webkit-scrollbar-thumb { background: var(--color-charcoal); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-steel); }
+
+/* Signal Glow Animation */
+@keyframes signal-glow {
+  0%, 100% { filter: drop-shadow(0 0 2px var(--color-signal)); }
+  50% { filter: drop-shadow(0 0 8px var(--color-signal)); }
+}
+.animate-signal-glow {
+  animation: signal-glow 3s ease-in-out infinite;
+}
+
+/* Marquee Animation */
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
+}
+.animate-marquee {
+  animation: marquee 40s linear infinite;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
 }
 
 /* Pulse animation for risk score */
@@ -42,7 +77,7 @@ body {
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+  background: linear-gradient(135deg, var(--color-signal), var(--color-mint));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

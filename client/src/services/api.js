@@ -35,4 +35,20 @@ export const loginUser = (data) => api.post('/auth/login', data);
 export const registerUser = (data) => api.post('/auth/register', data);
 export const getProfile = () => api.get('/auth/profile');
 
+// Community Reports
+export const submitReport = (data) => api.post('/report', data);
+export const getReports = (params = {}) => api.get('/reports', { params });
+export const getTrendingReports = (count = 10) => api.get('/reports/trending', { params: { count } });
+
+// Dashboard
+export const getDashboardData = () => api.get('/dashboard');
+
+// Profile
+export const getProfileStats = () => api.get('/profile/stats');
+export const updateProfile = (data) => api.put('/profile', data, {
+  headers: {
+    'Content-Type': 'multipart/form-data',
+  },
+});
+
 export default api;

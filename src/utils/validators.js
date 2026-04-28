@@ -53,9 +53,47 @@ const messageAnalysisSchema = Joi.object({
 
 // QR and Image endpoints accept file uploads — validated by Multer middleware
 
+// ──────────────────────────────────────────────
+// Report schemas
+// ──────────────────────────────────────────────
+const reportSchema = Joi.object({
+  type: Joi.string()
+    .valid('url', 'message', 'qr', 'image', 'audio')
+    .required()
+    .messages({
+      'any.only': 'Type must be one of: url, message, qr, image, audio',
+      'any.required': 'Report type is required',
+    }),
+  content: Joi.string()
+    .trim()
+    .min(1)
+    .max(5000)
+    .required()
+    .messages({
+      'string.min': 'Content cannot be empty',
+      'string.max': 'Content cannot exceed 5000 characters',
+      'any.required': 'Report content is required',
+    }),
+  riskScore: Joi.number().min(0).max(100).required().messages({
+    'number.min': 'Risk score must be at least 0',
+    'number.max': 'Risk score cannot exceed 100',
+    'any.required': 'Risk score is required',
+  }),
+  riskLevel: Joi.string()
+    .valid('safe', 'low', 'medium', 'high', 'critical')
+    .required()
+    .messages({
+      'any.only': 'Risk level must be one of: safe, low, medium, high, critical',
+      'any.required': 'Risk level is required',
+    }),
+  signals: Joi.array().items(Joi.string().trim().max(200)).max(50).default([]),
+  explanation: Joi.array().items(Joi.string().trim().max(500)).max(20).default([]),
+});
+
 module.exports = {
   registerSchema,
   loginSchema,
   urlAnalysisSchema,
   messageAnalysisSchema,
+  reportSchema,
 };

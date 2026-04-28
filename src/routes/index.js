@@ -7,6 +7,7 @@ const messageRoutes = require('./message.routes');
 const qrRoutes = require('./qr.routes');
 const imageRoutes = require('./image.routes');
 const historyRoutes = require('./history.routes');
+const dashboardRoutes = require('./dashboard.routes');
 
 /**
  * @swagger
@@ -33,14 +34,20 @@ router.get('/health', (req, res) => {
 });
 
 const chatRoutes = require('./chat.routes');
+const reportRoutes = require('./report.routes');
+const profileRoutes = require('./profile.routes');
 
 // Mount sub-routers
 router.use('/auth', authRoutes);
+router.use('/profile', profileRoutes);
 router.use('/scan/url', urlRoutes);
 router.use('/scan/message', messageRoutes);
 router.use('/scan/qr', qrRoutes);
 router.use('/scan/image', imageRoutes);
 router.use('/history', historyRoutes);
 router.use('/chat', chatRoutes);
+router.use('/report', reportRoutes);   // POST /api/v1/report
+router.use('/reports', reportRoutes);  // GET  /api/v1/reports, /api/v1/reports/trending
+router.use('/dashboard', dashboardRoutes);
 
 module.exports = router;

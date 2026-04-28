@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Shield, Lock, Mail, ArrowRight, AlertTriangle } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowRight, AlertTriangle, Terminal } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
@@ -20,7 +20,7 @@ export default function Login() {
       await login(email, password);
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to log in');
+      setError(err.response?.data?.message || 'Failed to authenticate');
     } finally {
       setLoading(false);
     }
@@ -28,58 +28,57 @@ export default function Login() {
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4 py-12">
-      <div className="w-full max-w-md overflow-hidden rounded-2xl border border-white/10 bg-[#0B0F19]/80 shadow-2xl backdrop-blur-xl">
+      <div className="w-full max-w-md overflow-hidden rounded-lg border border-[var(--color-charcoal)] bg-[var(--color-carbon)] shadow-[var(--shadow-ambient)]">
         {/* Header */}
-        <div className="bg-indigo-500/5 px-8 py-10 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-500/20 ring-1 ring-indigo-500/30">
-            <Shield className="h-7 w-7 text-indigo-400" />
+        <div className="border-b border-[var(--color-charcoal)] px-8 py-8 text-center bg-black/20">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded border border-[var(--color-charcoal)] bg-[var(--color-abyss)] shadow-[0_0_10px_rgba(0,217,146,0.1)]">
+            <Terminal className="h-6 w-6 text-[var(--color-signal)]" />
           </div>
-          <h2 className="text-2xl font-bold text-white tracking-tight">Welcome back</h2>
-          <p className="mt-2 text-sm text-slate-400">Log in to ScamShield to access your scan history and personalized security alerts.</p>
+          <h2 className="font-display text-2xl font-normal text-[var(--color-snow)] tracking-tight">System Access</h2>
+          <p className="mt-2 font-mono text-xs text-[var(--color-steel)] uppercase tracking-widest">Authenticate to access ScamShield terminal</p>
         </div>
 
         {/* Form */}
         <div className="px-8 py-8">
           {error && (
-            <div className="mb-6 flex items-center gap-3 rounded-xl bg-red-500/10 p-4 text-sm text-red-400 ring-1 ring-red-500/20">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
-              <p>{error}</p>
+            <div className="mb-6 flex items-center gap-3 rounded border border-red-500/30 bg-red-500/10 p-3 text-xs font-mono text-red-400">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <p>ERROR: {error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-300">Email Address</label>
+              <label className="mb-2 block font-mono text-xs font-bold uppercase tracking-widest text-[var(--color-steel)]">User_ID (Email)</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                  <Mail className="h-5 w-5 text-slate-500" />
+                  <Mail className="h-4 w-4 text-[var(--color-steel)]" />
                 </div>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-slate-800/50 py-3 pl-11 pr-4 text-white placeholder-slate-500 outline-none transition-colors focus:border-indigo-500/50 focus:bg-slate-800 focus:ring-1 focus:ring-indigo-500/50"
-                  placeholder="you@example.com"
+                  className="w-full rounded border border-[var(--color-charcoal)] bg-[var(--color-abyss)] py-3 pl-11 pr-4 font-mono text-sm text-[var(--color-snow)] placeholder-[var(--color-charcoal)] outline-none transition-colors focus:border-[var(--color-signal)] focus:shadow-[0_0_8px_rgba(0,217,146,0.2)]"
+                  placeholder="operator@system.io"
                 />
               </div>
             </div>
 
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <label className="block text-sm font-medium text-slate-300">Password</label>
-                <a href="#" className="text-xs font-medium text-indigo-400 hover:text-indigo-300">Forgot password?</a>
+                <label className="block font-mono text-xs font-bold uppercase tracking-widest text-[var(--color-steel)]">Access_Key (Password)</label>
               </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                  <Lock className="h-5 w-5 text-slate-500" />
+                  <Lock className="h-4 w-4 text-[var(--color-steel)]" />
                 </div>
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-slate-800/50 py-3 pl-11 pr-4 text-white placeholder-slate-500 outline-none transition-colors focus:border-indigo-500/50 focus:bg-slate-800 focus:ring-1 focus:ring-indigo-500/50"
+                  className="w-full rounded border border-[var(--color-charcoal)] bg-[var(--color-abyss)] py-3 pl-11 pr-4 font-mono text-sm text-[var(--color-snow)] placeholder-[var(--color-charcoal)] outline-none transition-colors focus:border-[var(--color-signal)] focus:shadow-[0_0_8px_rgba(0,217,146,0.2)]"
                   placeholder="••••••••"
                 />
               </div>
@@ -88,20 +87,20 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="group mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-500 py-3.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-400 disabled:opacity-50 disabled:hover:bg-indigo-500"
+              className="group mt-4 flex w-full items-center justify-center gap-2 rounded border border-transparent bg-[var(--color-carbon)] py-3 text-sm font-bold uppercase tracking-widest text-[var(--color-mint)] ring-1 ring-[var(--color-signal)]/80 transition-all shadow-[0_0_10px_rgba(0,217,146,0.1)] hover:bg-black/20 hover:shadow-[0_0_15px_rgba(0,217,146,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Logging in...' : 'Log in'}
+              {loading ? 'AUTHENTICATING...' : 'AUTHORIZE'}
               {!loading && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
             </button>
           </form>
         </div>
 
         {/* Footer */}
-        <div className="border-t border-white/5 bg-slate-900/50 px-8 py-6 text-center">
-          <p className="text-sm text-slate-400">
-            Don't have an account?{' '}
-            <Link to="/signup" className="font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
-              Sign up
+        <div className="border-t border-[var(--color-charcoal)] bg-black/40 px-8 py-5 text-center">
+          <p className="font-mono text-xs text-[var(--color-steel)] uppercase">
+            UNAUTHORIZED?{' '}
+            <Link to="/signup" className="font-bold text-[var(--color-signal)] hover:text-[var(--color-mint)] transition-colors">
+              REQUEST ACCESS
             </Link>
           </p>
         </div>
