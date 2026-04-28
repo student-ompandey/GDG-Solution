@@ -1,210 +1,133 @@
-# 🛡️ Scam Detection Platform  -----
+<div align="center">
 
-A production-ready backend API for detecting phishing URLs, scam messages, malicious QR codes, and fraudulent images. Built with **Node.js**, **Express.js**, and **MongoDB**.
+# 🛡️ SCAMSHIELD
 
-Each analysis returns a **risk score (0–100)** with a human-readable explanation.
+**The ultimate threat detection agent.**
+
+[![React](https://img.shields.io/badge/React-18.x-61DAFB?logo=react&logoColor=white)](#)
+[![Node.js](https://img.shields.io/badge/Node.js-18.x-339933?logo=node.js&logoColor=white)](#)
+[![Express.js](https://img.shields.io/badge/Express.js-4.x-000000?logo=express&logoColor=white)](#)
+[![MongoDB](https://img.shields.io/badge/MongoDB-6.x-47A248?logo=mongodb&logoColor=white)](#)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.x-38B2AC?logo=tailwind-css&logoColor=white)](#)
+
+A high-fidelity, production-ready, full-stack platform for detecting phishing URLs, scam messages, malicious QR codes, and fraudulent images in real-time. 
+
+[Explore Features](#-features) • [Getting Started](#-getting-started) • [API Reference](#-api-endpoints)
+</div>
 
 ---
 
 ## ✨ Features
 
-| Feature | Description |
-|---------|-------------|
-| 🔗 **URL Analysis** | Detect IP-based URLs, shorteners, suspicious TLDs, phishing keywords. Google Safe Browsing integration. |
-| 💬 **Message Analysis** | Keyword matching, urgency detection, ALL CAPS check. OpenAI intent classification. |
-| 📱 **QR Code Scan** | Decode QR codes from uploaded images and analyse extracted URLs. |
-| 🖼️ **Image Analysis** | AI-powered scam content detection using OpenAI Vision API. |
-| 🔐 **Authentication** | JWT-based auth with user/admin roles. |
-| 📊 **Scan History** | Full scan history with pagination, filtering, and admin statistics. |
-| 📖 **API Docs** | Interactive Swagger UI documentation. |
-| 🛡️ **Security** | Helmet, CORS, rate limiting, input validation (Joi). |
+ScamShield combines a stunning, high-performance UI with a robust, heuristically-driven AI backend.
+
+### 🎨 Premium Frontend (Client)
+- **Deep-Space Dark Aesthetic**: Custom UI featuring *Abyss Black* (`#050507`) backgrounds with vivid *Signal Green* (`#00d992`) neon highlights.
+- **Glassmorphism & Motion**: Immersive component design featuring frosted glass effects, glowing hover states, and smooth 60fps micro-animations.
+- **Dynamic Threat Workflow**: Interactive SVG pipelines and infinite marquee scrolling displaying real-time system capabilities and supported platforms.
+
+### 🧠 Intelligent Backend (Server)
+- **🔗 URL Analysis**: Detects IP-based URLs, shorteners, suspicious TLDs, and phishing keywords. Integrates with Google Safe Browsing.
+- **💬 Message Analysis**: Deep keyword matching, urgency detection, and OpenAI intent classification.
+- **📱 QR Code Scan**: Decodes QR codes from uploaded images to analyze hidden URLs.
+- **🖼️ Image Analysis**: AI-powered scam content detection using OpenAI Vision.
+- **📊 Heuristic Scoring**: Returns a human-readable **Risk Score (0–100)** for every analyzed vector.
 
 ---
 
 ## 🏗️ Tech Stack
 
+### Frontend (Client)
+- **Framework:** React.js (Vite)
+- **Styling:** Tailwind CSS v4 (Custom Design System)
+- **Routing:** React Router v6
+- **Icons:** Lucide React
+
+### Backend (Server)
 - **Runtime:** Node.js
 - **Framework:** Express.js
 - **Database:** MongoDB + Mongoose
 - **Auth:** JWT (jsonwebtoken + bcryptjs)
-- **Validation:** Joi
-- **Logging:** Winston + Morgan
-- **Security:** Helmet, CORS, express-rate-limit
-- **File Upload:** Multer
-- **QR Decoding:** Jimp + jsQR
-- **AI:** OpenAI API (GPT-4o-mini + Vision)
-- **Docs:** Swagger (swagger-jsdoc + swagger-ui-express)
-
----
-
-## 📂 Folder Structure
-
-```
-├── server.js                    # Entry point
-├── src/
-│   ├── app.js                   # Express app configuration
-│   ├── config/
-│   │   ├── db.js                # MongoDB connection
-│   │   ├── env.js               # Centralised env config
-│   │   └── swagger.js           # Swagger/OpenAPI setup
-│   ├── controllers/
-│   │   ├── auth.controller.js
-│   │   ├── url.controller.js
-│   │   ├── message.controller.js
-│   │   ├── qr.controller.js
-│   │   ├── image.controller.js
-│   │   └── history.controller.js
-│   ├── middlewares/
-│   │   ├── auth.middleware.js
-│   │   ├── error.middleware.js
-│   │   ├── validate.middleware.js
-│   │   ├── upload.middleware.js
-│   │   └── rateLimiter.middleware.js
-│   ├── models/
-│   │   ├── User.model.js
-│   │   └── ScanHistory.model.js
-│   ├── routes/
-│   │   ├── index.js
-│   │   ├── auth.routes.js
-│   │   ├── url.routes.js
-│   │   ├── message.routes.js
-│   │   ├── qr.routes.js
-│   │   ├── image.routes.js
-│   │   └── history.routes.js
-│   ├── services/
-│   │   ├── url.service.js
-│   │   ├── message.service.js
-│   │   ├── qr.service.js
-│   │   ├── image.service.js
-│   │   └── history.service.js
-│   └── utils/
-│       ├── ApiError.js
-│       ├── ApiResponse.js
-│       ├── asyncHandler.js
-│       ├── logger.js
-│       └── validators.js
-├── package.json
-├── .env.example
-├── .gitignore
-└── README.md
-```
+- **AI Processing:** OpenAI API (GPT-4o-mini + Vision)
+- **Utilities:** Multer, Jimp, jsQR, Joi, Winston
+- **Docs:** Swagger UI
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-
 - [Node.js](https://nodejs.org/) v18+
-- [MongoDB](https://www.mongodb.com/) (local or Atlas)
+- [MongoDB](https://www.mongodb.com/) (Local or Atlas)
 
-### Installation
-
+### 1. Clone the Repository
 ```bash
-# 1. Clone the repository
-git clone https://github.com/your-username/GDG-Solution.git
+git clone https://github.com/student-ompandey/GDG-Solution.git
 cd GDG-Solution
-
-# 2. Install dependencies
-npm install
-
-# 3. Set up environment variables
-cp .env.example .env
-# Edit .env with your configuration
-
-# 4. Start the development server
-npm run dev
 ```
 
-The server will start at `http://localhost:5000`.
+### 2. Backend Setup
+```bash
+# Install server dependencies
+npm install
 
-### Environment Variables
+# Setup environment variables
+cp .env.example .env
+
+# Start the development server
+npm run dev
+```
+*The API will start at `http://localhost:5000`.*
+
+### 3. Frontend Setup
+Open a new terminal window:
+```bash
+# Navigate to the client directory
+cd client
+
+# Install client dependencies
+npm install
+
+# Start the Vite development server
+npm run dev
+```
+*The UI will be accessible at `http://localhost:5173`.*
+
+---
+
+## ⚙️ Environment Variables (Server)
 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `PORT` | No | Server port (default: 5000) |
 | `MONGODB_URI` | **Yes** | MongoDB connection string |
 | `JWT_SECRET` | **Yes** | Secret key for JWT signing |
-| `JWT_EXPIRES_IN` | No | Token expiry (default: 7d) |
-| `GOOGLE_SAFE_BROWSING_API_KEY` | No | Enables Google Safe Browsing checks |
 | `OPENAI_API_KEY` | No | Enables AI message/image analysis |
-| `RATE_LIMIT_WINDOW_MS` | No | Rate limit window in ms (default: 900000) |
-| `RATE_LIMIT_MAX_REQUESTS` | No | Max requests per window (default: 100) |
+| `GOOGLE_SAFE_BROWSING_API_KEY` | No | Enables Google Safe Browsing checks |
 
-> **Note:** The platform works without external API keys — heuristic-based scoring is always active. API keys enhance accuracy.
-
----
-
-## 📡 API Endpoints
-
-### Authentication
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/v1/auth/register` | Register a new user | Public |
-| POST | `/api/v1/auth/login` | Login user | Public |
-| GET | `/api/v1/auth/profile` | Get user profile | Protected |
-
-### Scan Endpoints
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/v1/scan/url` | Analyse a URL | Optional |
-| POST | `/api/v1/scan/message` | Analyse a text message | Optional |
-| POST | `/api/v1/scan/qr` | Scan a QR code image | Optional |
-| POST | `/api/v1/scan/image` | Analyse an image | Optional |
-
-### History & Stats
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/v1/history` | Get user scan history | Protected |
-| GET | `/api/v1/history/stats` | Get scan statistics | Admin |
-| GET | `/api/v1/history/:id` | Get single scan entry | Protected |
-
-### System
-
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/v1/health` | Health check | Public |
-| GET | `/api/docs` | Swagger API documentation | Public |
+> **Note:** The platform works without external API keys — heuristic-based scoring is always active as a fallback.
 
 ---
 
-## 🧪 Example Requests
+## 📡 Core API Endpoints
 
-### Analyse a URL
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| **POST** | `/api/v1/auth/register` | Register a new user account |
+| **POST** | `/api/v1/auth/login` | Authenticate user & receive JWT |
+| **POST** | `/api/v1/scan/url` | Submit a URL for threat analysis |
+| **POST** | `/api/v1/scan/message` | Submit text for scam/urgency analysis |
+| **POST** | `/api/v1/scan/qr` | Upload a QR code for URL extraction & scan |
+| **POST** | `/api/v1/scan/image` | Upload an image for AI vision analysis |
+| **GET** | `/api/v1/history` | Retrieve paginated scan history |
+| **GET** | `/api/docs` | View interactive Swagger documentation |
 
-```bash
-curl -X POST http://localhost:5000/api/v1/scan/url \
-  -H "Content-Type: application/json" \
-  -d '{"url": "http://192.168.1.1/login/verify-account"}'
-```
-
-### Analyse a Message
-
-```bash
-curl -X POST http://localhost:5000/api/v1/scan/message \
-  -H "Content-Type: application/json" \
-  -d '{"message": "URGENT! Your account has been suspended. Click here to verify: http://bit.ly/abc123"}'
-```
-
-### Scan a QR Code
-
-```bash
-curl -X POST http://localhost:5000/api/v1/scan/qr \
-  -F "file=@qr-code.png"
-```
-
-### Analyse an Image
-
-```bash
-curl -X POST http://localhost:5000/api/v1/scan/image \
-  -F "file=@suspicious-screenshot.png"
-```
+*(Detailed API payloads and responses can be tested via the Swagger UI available at `/api/docs` when the server is running).*
 
 ---
 
-## 📄 License
-
-ISC
+<div align="center">
+  <p className="font-mono text-[10px] uppercase tracking-widest">
+    © SCAMSHIELD_AGENT. ALL RIGHTS RESERVED.
+  </p>
+</div>
