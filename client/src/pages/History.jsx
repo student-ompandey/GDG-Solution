@@ -59,7 +59,7 @@ export default function History() {
         </div>
 
         {/* Filter */}
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1.5 sm:gap-1">
           {filterOptions.map((f) => (
             <button
               key={f.id}

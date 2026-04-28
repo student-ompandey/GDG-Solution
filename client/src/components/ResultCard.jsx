@@ -1,41 +1,60 @@
-import { AlertTriangle, CheckCircle, XCircle, Info, Copy, Check, Sparkles, Target, Zap, Volume2, BookOpen, ShieldAlert, TrendingUp, Flag } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { AlertTriangle, CheckCircle, XCircle, Info, Copy, Check, Sparkles, Target, Zap, Volume2, VolumeX, Pause, Play, BookOpen, ShieldAlert, TrendingUp, Flag, Skull } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { submitReport } from '../services/api';
+import { speakText, stopSpeech, pauseSpeech, resumeSpeech, buildSpeechFromResult, isSpeechSupported } from '../utils/speech';
 const riskConfig = {
   'Safe':        { border: 'border-[var(--color-signal)]', text: 'text-[var(--color-signal)]', icon: CheckCircle, shadow: 'shadow-[0_0_15px_rgba(0,217,146,0.15)]' },
   'Low Risk':    { border: 'border-yellow-500/50', text: 'text-yellow-400', icon: Info, shadow: 'shadow-[0_0_15px_rgba(234,179,8,0.1)]' },
   'Medium Risk': { border: 'border-orange-500/50', text: 'text-orange-400', icon: AlertTriangle, shadow: 'shadow-[0_0_15px_rgba(249,115,22,0.1)]' },
   'High Risk':   { border: 'border-red-500/50', text: 'text-red-400', icon: XCircle, shadow: 'shadow-[0_0_15px_rgba(239,68,68,0.15)]' },
+  'Critical':    { border: 'border-red-600/70', text: 'text-red-500', icon: Skull, shadow: 'shadow-[0_0_20px_rgba(239,68,68,0.25)]' },
 };
 
 const scoreColor = (level) => {
-  const m = { 'Safe': 'var(--color-signal)', 'Low Risk': '#eab308', 'Medium Risk': '#f97316', 'High Risk': '#ef4444' };
+  const m = { 'Safe': 'var(--color-signal)', 'Low Risk': '#eab308', 'Medium Risk': '#f97316', 'High Risk': '#ef4444', 'Critical': '#dc2626' };
   return m[level] || 'var(--color-steel)';
 };
 
 // Signal display names for better UX
 const SIGNAL_NAMES = {
-  'URGENCY_TACTICS': '⏰ URGENCY_TACTICS',
-  'SCAM_KEYWORDS': '🚨 SCAM_KEYWORDS',
-  'HIGH_RISK_KEYWORDS': '⛔ HIGH_RISK_KEYWORDS',
-  'EMBEDDED_LINK': '🔗 SUSPICIOUS_LINK',
+  // Detection Engine categories
+  'URGENCY': '⏰ URGENCY',
+  'SENSITIVE_REQUEST': '🔐 SENSITIVE_DATA',
+  'REWARD_SCAM': '🎁 REWARD_SCAM',
+  'THREAT_LANGUAGE': '⚠️ THREAT',
+  'SUSPICIOUS_URL': '🔗 SUSPICIOUS_URL',
+  'SOCIAL_ENGINEERING': '🎭 SOCIAL_ENG',
+  'FINANCIAL_FRAUD': '💰 FINANCIAL_FRAUD',
+  'IMPERSONATION': '👤 IMPERSONATION',
+  'DELIVERY_SCAM': '📦 DELIVERY_SCAM',
+  'COMBO_BONUS': '🔥 COMBO_BONUS',
+  // Legacy signal types
+  'EMBEDDED_LINK': '🔗 EMBEDDED_LINK',
   'SHORT_MSG_WITH_LINK': '📩 SHORT_MSG_LINK',
   'EXCESSIVE_CAPS': '🔠 EXCESSIVE_CAPS',
   'EXCESSIVE_PUNCTUATION': '❗ EXCESSIVE_PUNC',
-  'MONEY_MENTION': '💰 MONEY_MENTION',
-  'PHONE_SOLICITATION': '📞 PHONE_SOLICITATION',
-  'AI_SCAM_DETECTED': '🤖 AI_SCAM_DETECT',
-  'AI_SPAM_DETECTED': '🤖 AI_SPAM_DETECT',
+  'PHONE_SOLICITATION': '📞 PHONE_NUMBER',
+  'AI_SCAM_DETECTED': '🤖 AI_SCAM',
+  'AI_SPAM_DETECTED': '🤖 AI_SPAM',
   'AI_SUSPICIOUS': '🤖 AI_SUSPICIOUS',
-  'OCR_SCAM_TEXT': '📝 OCR_SCAM_TEXT',
-  'OCR_URGENCY_TEXT': '⏰ OCR_URGENCY',
-  'OCR_NO_TEXT': '📄 OCR_NO_TEXT',
   'VISION_SCAM_DETECTED': '👁️ VISION_SCAM',
+  'OCR_NO_TEXT': '📄 OCR_NO_TEXT',
   'QR_CONTAINS_URL': '🔗 QR_URL',
   'QR_NO_CODE_FOUND': '❌ QR_NOT_FOUND',
   'QR_FREE_EMAIL': '📧 QR_FREE_EMAIL',
   'QR_PHONE_NUMBER': '📞 QR_PHONE',
   'QR_PROCESSING_ERROR': '⚠️ QR_ERROR',
+  // URL signals
+  'SUSPICIOUS_TLD': '🌐 BAD_TLD',
+  'IP_ADDRESS_URL': '🖥️ IP_ADDRESS',
+  'URL_SHORTENER': '🔗 SHORTENER',
+  'RANDOM_DOMAIN': '🎲 RANDOM_DOMAIN',
+  'PUNYCODE_HOMOGRAPH': '⚡ HOMOGRAPH',
+  'BRAND_IMPERSONATION': '👤 BRAND_FAKE',
+  'NO_HTTPS': '🔓 NO_HTTPS',
+  'PHISHING_KEYWORDS': '🎣 PHISHING_KW',
+  'REDIRECT_PARAM': '↪️ REDIRECT',
+  'SAFE_BROWSING_FLAG': '🛡️ GOOGLE_FLAG',
 };
 
 // Signal badge colors based on signal category
@@ -43,17 +62,24 @@ const signalColor = (type) => {
   if (type.includes('AI_') || type.includes('VISION_')) return { text: 'text-purple-400', border: 'border-purple-500/30' };
   if (type.includes('OCR_')) return { text: 'text-amber-400', border: 'border-amber-500/30' };
   if (type.includes('QR_')) return { text: 'text-cyan-400', border: 'border-cyan-500/30' };
-  if (type.includes('URGENCY') || type.includes('HIGH_RISK')) return { text: 'text-red-400', border: 'border-red-500/30' };
+  if (type === 'COMBO_BONUS') return { text: 'text-orange-400', border: 'border-orange-500/30' };
+  if (type === 'URGENCY' || type === 'THREAT_LANGUAGE') return { text: 'text-red-400', border: 'border-red-500/30' };
+  if (type === 'SENSITIVE_REQUEST') return { text: 'text-pink-400', border: 'border-pink-500/30' };
+  if (type === 'REWARD_SCAM' || type === 'FINANCIAL_FRAUD') return { text: 'text-yellow-400', border: 'border-yellow-500/30' };
+  if (type === 'IMPERSONATION' || type === 'SOCIAL_ENGINEERING') return { text: 'text-violet-400', border: 'border-violet-500/30' };
+  if (type === 'BRAND_IMPERSONATION') return { text: 'text-red-400', border: 'border-red-500/30' };
+  if (type.includes('SUSPICIOUS') || type.includes('PHISHING') || type.includes('SHORTENER')) return { text: 'text-amber-400', border: 'border-amber-500/30' };
   return { text: 'text-[var(--color-steel)]', border: 'border-[var(--color-charcoal)]' };
 };
 
 export default function ResultCard({ result, requestedLang }) {
   const [showHindi, setShowHindi] = useState(requestedLang === 'hi');
   const [copied, setCopied] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [speechState, setSpeechState] = useState({ speaking: false, paused: false });
   const [animatedScore, setAnimatedScore] = useState(0);
   const [reportStatus, setReportStatus] = useState('idle'); // idle | loading | success | error
   const cardRef = useRef(null);
+  const speechSupported = isSpeechSupported();
 
   useEffect(() => {
     setShowHindi(requestedLang === 'hi');
@@ -93,30 +119,29 @@ export default function ResultCard({ result, requestedLang }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const playVoiceAlert = () => {
-    if ('speechSynthesis' in window) {
-      setIsPlaying(true);
-      window.speechSynthesis.cancel();
-      const isDangerous = result.riskLevel === 'High Risk' || result.riskLevel === 'Medium Risk';
-      const utterance = new SpeechSynthesisUtterance();
-      
-      if (showHindi) {
-        utterance.text = isDangerous
-          ? `Yeh ${result.type} unsafe hai, ise open mat karo. Risk score ${result.riskScore} percent hai.`
-          : 'Yeh link safe lag raha hai.';
-        utterance.lang = 'hi-IN';
-      } else {
-        utterance.text = isDangerous
-          ? `Warning. This ${result.type} is unsafe with a risk score of ${result.riskScore}. Do not open or interact with it.`
-          : 'This content looks safe to open.';
-        utterance.lang = 'en-US';
-      }
-      
-      utterance.onend = () => setIsPlaying(false);
-      utterance.onerror = () => setIsPlaying(false);
-      window.speechSynthesis.speak(utterance);
+  // ── TTS Controls ──
+  const handleSpeak = useCallback(() => {
+    const lang = showHindi ? 'hi' : 'en';
+    const text = buildSpeechFromResult(result, lang);
+    speakText(text, lang, (state) => setSpeechState(state));
+  }, [result, showHindi]);
+
+  const handlePause = useCallback(() => {
+    if (speechState.paused) {
+      resumeSpeech();
+    } else {
+      pauseSpeech();
     }
-  };
+  }, [speechState.paused]);
+
+  const handleStop = useCallback(() => {
+    stopSpeech();
+  }, []);
+
+  // Stop speech when component unmounts or result changes
+  useEffect(() => {
+    return () => stopSpeech();
+  }, [result]);
 
   const handleReport = async () => {
     if (reportStatus === 'success' || reportStatus === 'loading') return;
@@ -140,7 +165,7 @@ export default function ResultCard({ result, requestedLang }) {
   };
 
   return (
-    <div ref={cardRef} className={`mt-8 rounded-lg border-2 ${cfg.border} bg-[var(--color-carbon)] p-8 transition-all duration-500 ${cfg.shadow}`} style={{ animation: 'fadeSlideIn 0.5s ease-out' }}>
+    <div ref={cardRef} className={`mt-8 rounded-lg border-2 ${cfg.border} bg-[var(--color-carbon)] p-4 sm:p-8 transition-all duration-500 ${cfg.shadow}`} style={{ animation: 'fadeSlideIn 0.5s ease-out' }}>
       <style>{`
         @keyframes fadeSlideIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes scorePulse { 0%, 100% { filter: drop-shadow(0 0 4px ${scoreColor(result.riskLevel)}); } 50% { filter: drop-shadow(0 0 12px ${scoreColor(result.riskLevel)}); } }
@@ -204,16 +229,51 @@ export default function ResultCard({ result, requestedLang }) {
               </button>
             )}
             
-            {/* Voice Alert */}
-            {(result.riskLevel === 'High Risk' || result.riskLevel === 'Medium Risk') && (
-              <button
-                onClick={playVoiceAlert}
-                className={`flex items-center gap-1.5 rounded border px-2.5 py-1 text-[11px] font-mono font-bold uppercase tracking-widest transition-colors ${isPlaying ? 'border-red-500/50 text-red-400 bg-red-500/10 animate-pulse' : 'border-[var(--color-charcoal)] text-[var(--color-steel)] hover:bg-[var(--color-charcoal)]'}`}
-                title="Play Audio Alert"
-              >
-                <Volume2 className="h-3 w-3" />
-                {isPlaying ? 'PLAYING...' : 'PLAY_ALERT'}
-              </button>
+            {/* TTS Controls */}
+            {speechSupported && (
+              <div className="flex items-center gap-1">
+                {!speechState.speaking ? (
+                  <button
+                    onClick={handleSpeak}
+                    className="flex items-center gap-1.5 rounded border border-[var(--color-charcoal)] bg-[var(--color-abyss)] px-2.5 py-1 text-[11px] font-mono font-bold uppercase tracking-widest text-[var(--color-steel)] transition-all hover:bg-[var(--color-charcoal)] hover:text-[var(--color-snow)] hover:border-[var(--color-signal)] hover:shadow-[0_0_8px_rgba(0,217,146,0.15)]"
+                    title={showHindi ? 'सुनें' : 'Listen to result'}
+                  >
+                    <Volume2 className="h-3 w-3" />
+                    {showHindi ? 'सुनें' : 'LISTEN'}
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      onClick={handlePause}
+                      className={`flex items-center gap-1 rounded border px-2 py-1 text-[11px] font-mono font-bold uppercase tracking-widest transition-all ${
+                        speechState.paused
+                          ? 'border-yellow-500/50 text-yellow-400 bg-yellow-500/10'
+                          : 'border-[var(--color-signal)]/50 text-[var(--color-signal)] bg-[var(--color-signal)]/10'
+                      }`}
+                      title={speechState.paused ? 'Resume' : 'Pause'}
+                    >
+                      {speechState.paused ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
+                    </button>
+                    <button
+                      onClick={handleStop}
+                      className="flex items-center gap-1 rounded border border-red-500/40 bg-red-500/10 px-2 py-1 text-[11px] font-mono font-bold uppercase tracking-widest text-red-400 transition-all hover:bg-red-500/20"
+                      title="Stop"
+                    >
+                      <VolumeX className="h-3 w-3" />
+                    </button>
+                    {/* Speaking wave indicator */}
+                    {!speechState.paused && (
+                      <div className="flex items-center gap-0.5 ml-1">
+                        <span className="inline-block w-0.5 h-3 bg-[var(--color-signal)] rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                        <span className="inline-block w-0.5 h-4 bg-[var(--color-signal)] rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                        <span className="inline-block w-0.5 h-2 bg-[var(--color-signal)] rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                        <span className="inline-block w-0.5 h-5 bg-[var(--color-signal)] rounded-full animate-pulse" style={{ animationDelay: '100ms' }} />
+                        <span className="inline-block w-0.5 h-3 bg-[var(--color-signal)] rounded-full animate-pulse" style={{ animationDelay: '250ms' }} />
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             )}
           </div>
           

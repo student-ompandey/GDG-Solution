@@ -1,14 +1,26 @@
+/**
+ * ╔══════════════════════════════════════════════╗
+ * ║  IMAGE SERVICE — Intelligent Image Analysis  ║
+ * ╚══════════════════════════════════════════════╝
+ *
+ * Multi-layer image analysis pipeline:
+ *   1. OCR text extraction → Detection Engine analysis
+ *   2. Gemini AI text analysis on OCR output
+ *   3. Gemini Vision (direct image analysis)
+ *   4. Signal merging from all layers
+ */
+
 const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
-const { analyzeMessage } = require('./message.service');
 const { buildScanResponse } = require('../utils/riskLevel');
 const { IMAGE_SIGNALS, createSignal } = require('../utils/signals');
+const { analyzeText, applySafetyCheck } = require('./detection.engine');
 const aiService = require('./ai.service');
 
 /**
  * Analyse an uploaded image for scam content.
- * Pipeline: OCR text extraction → Gemini Vision → combine scores.
+ * Pipeline: OCR → Detection Engine → Gemini Vision → merge.
  *
  * @param {string} filePath
  * @param {string} originalName
@@ -19,24 +31,35 @@ const analyzeImage = async (filePath, originalName, options = {}) => {
   const signals = [];
   const explanations = [];
   let extractedText = '';
-  let ocrKeywords = [];
+  let engineResult = null;
 
   try {
     // ── 1. OCR text extraction ─────────────────
     try {
       extractedText = await extractTextWithOCR(filePath);
       if (extractedText && extractedText.trim().length > 10) {
-        // 1a. Keyword-based analysis on extracted text
-        const msgResult = await analyzeMessage(extractedText);
-        ocrKeywords = msgResult.details?.detectedKeywords || [];
 
-        if (ocrKeywords.length > 0) {
-          signals.push(createSignal(IMAGE_SIGNALS.OCR_SCAM_TEXT, `OCR detected keywords: ${ocrKeywords.join(', ')}`));
-          explanations.push(`Image contains scam text: ${ocrKeywords.join(', ')}`);
-        }
-        if ((msgResult.details?.urgencyPatterns || []).length > 0) {
-          signals.push(createSignal(IMAGE_SIGNALS.OCR_URGENCY_TEXT, `Tactics: ${msgResult.details.urgencyPatterns.join(', ')}`));
-          explanations.push(`Image text uses pressure tactics: ${msgResult.details.urgencyPatterns.join(', ')}`);
+        // 1a. Detection Engine analysis on extracted text
+        engineResult = analyzeText(extractedText);
+
+        if (engineResult.signals.length > 0) {
+          // Add pattern-based signals
+          for (const sig of engineResult.signals) {
+            signals.push({
+              type: sig.type,
+              weight: Math.round(sig.weight * 0.8), // Slightly reduce weight for OCR (may have errors)
+              category: sig.category,
+              label: `[OCR] ${sig.label}`,
+              detail: sig.matched ? `OCR matched: "${sig.matched}"` : sig.label,
+            });
+          }
+
+          // Add engine explanations
+          for (const exp of engineResult.explanation) {
+            if (!explanations.includes(exp)) {
+              explanations.push(`Image text: ${exp}`);
+            }
+          }
         }
 
         // 1b. Gemini analysis on extracted text
@@ -79,8 +102,11 @@ const analyzeImage = async (filePath, originalName, options = {}) => {
       explanation: explanations,
       details: {
         extractedText: extractedText ? extractedText.substring(0, 300) : null,
-        detectedKeywords: ocrKeywords,
-        analysisMethod: 'OCR + Gemini AI',
+        detectedKeywords: engineResult ? engineResult.keywords : [],
+        intents: engineResult ? engineResult.intents : [],
+        comboBonuses: engineResult ? engineResult.comboBonuses.map(c => c.label) : [],
+        engineConfidence: engineResult ? engineResult.confidence : 'None',
+        analysisMethod: 'OCR + Detection Engine + Gemini AI',
       },
     });
 

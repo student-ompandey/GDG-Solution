@@ -7,10 +7,10 @@
  * and starts the HTTP server with graceful shutdown.
  */
 
-const app = require('./src/app');
-const connectDB = require('./src/config/db');
-const logger = require('./src/utils/logger');
-const { PORT, NODE_ENV } = require('./src/config/env');
+const app = require('./app');
+const connectDB = require('./config/db');
+const logger = require('./utils/logger');
+const { PORT, NODE_ENV } = require('./config/env');
 
 // ── Start Server ─────────────────────────────
 const startServer = async () => {

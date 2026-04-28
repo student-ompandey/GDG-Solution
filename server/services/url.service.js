@@ -1,7 +1,23 @@
+/**
+ * ╔══════════════════════════════════════════════╗
+ * ║  URL SERVICE — Intelligent URL Analysis      ║
+ * ╚══════════════════════════════════════════════╝
+ *
+ * Multi-layer URL analysis pipeline:
+ *   1. Whitelist check
+ *   2. Structural analysis (IP, port, protocol, encoding)
+ *   3. Domain intelligence (entropy, TLD, shorteners)
+ *   4. Detection Engine (keyword/pattern scanning on URL text)
+ *   5. URL Intelligence module
+ *   6. Google Safe Browsing
+ *   7. Brand impersonation detection
+ *   8. Gemini AI explanation
+ */
+
 const logger = require('../utils/logger');
-const { GOOGLE_SAFE_BROWSING_API_KEY } = require('../config/env');
 const { buildScanResponse } = require('../utils/riskLevel');
 const { URL_SIGNALS, createSignal } = require('../utils/signals');
+const { analyzeUrlIntelligence } = require('./detection.engine');
 const aiService = require('./ai.service');
 
 // ── Pattern databases ────────────────────────
@@ -32,7 +48,25 @@ const TRUSTED_DOMAINS = new Set([
   'github.com', 'microsoft.com', 'apple.com', 'amazon.com',
   'linkedin.com', 'instagram.com', 'wikipedia.org', 'netflix.com',
   'stackoverflow.com', 'reddit.com', 'paypal.com', 'outlook.com',
+  'googleapis.com', 'cloudflare.com', 'whatsapp.com', 'zoom.us',
 ]);
+
+// Brand domains for impersonation detection
+const BRAND_DOMAINS = {
+  'paypal': 'paypal.com',
+  'apple': 'apple.com',
+  'microsoft': 'microsoft.com',
+  'google': 'google.com',
+  'amazon': 'amazon.com',
+  'netflix': 'netflix.com',
+  'facebook': 'facebook.com',
+  'instagram': 'instagram.com',
+  'twitter': 'twitter.com',
+  'whatsapp': 'whatsapp.com',
+  'sbi': 'sbi.co.in',
+  'hdfc': 'hdfcbank.com',
+  'icici': 'icicibank.com',
+};
 
 // ── Entropy helper ───────────────────────────
 
@@ -57,12 +91,32 @@ const isRandomDomain = (hostname) => {
   return entropy > 3.8 || digitRatio > 0.4 || name.length > 20;
 };
 
+// ── Brand impersonation detection ────────────
+
+const detectBrandImpersonation = (hostname) => {
+  const rootDomain = hostname.split('.').slice(-2).join('.');
+  const results = [];
+
+  for (const [brand, realDomain] of Object.entries(BRAND_DOMAINS)) {
+    // Check if brand name appears in domain but it's NOT the real domain
+    if (hostname.includes(brand) && rootDomain !== realDomain) {
+      results.push({
+        brand,
+        realDomain,
+        suspectDomain: hostname,
+      });
+    }
+  }
+
+  return results;
+};
+
 // ──────────────────────────────────────────────
-// Main URL analysis — signal-based
+// Main URL analysis — multi-layer
 // ──────────────────────────────────────────────
 
 /**
- * Analyse a URL for phishing/scam indicators using signals + Gemini AI.
+ * Analyse a URL for phishing/scam indicators using multi-layer detection.
  * @param {string} url
  * @param {object} [options] - { lang: 'en' | 'hi' }
  * @returns {Promise<object>}
@@ -79,7 +133,7 @@ const analyzeUrl = async (url, options = {}) => {
     // Whitelist
     const rootDomain = hostname.split('.').slice(-2).join('.');
     if (TRUSTED_DOMAINS.has(rootDomain)) {
-      return buildScanResponse({ type: 'url', input: url, signals: [], explanation: [] });
+      return buildScanResponse({ type: 'url', input: url, signals: [], explanation: ['This URL belongs to a trusted, well-known domain.'] });
     }
 
     // 1. IP-based host
@@ -91,7 +145,7 @@ const analyzeUrl = async (url, options = {}) => {
     // 2. URL shortener
     if (URL_SHORTENERS.has(hostname)) {
       signals.push(createSignal(URL_SIGNALS.URL_SHORTENER, `Uses known shortener: ${hostname}`));
-      explanations.push(`Uses URL shortener service (${hostname})`);
+      explanations.push(`Uses URL shortener service (${hostname}) — destination is hidden`);
     }
 
     // 3. Suspicious TLD
@@ -101,23 +155,23 @@ const analyzeUrl = async (url, options = {}) => {
       explanations.push(`Uses frequently abused TLD (${tld})`);
     }
 
-    // 4. Random domain
+    // 4. Random domain (entropy-based)
     if (isRandomDomain(hostname)) {
       signals.push(createSignal(URL_SIGNALS.RANDOM_DOMAIN));
-      explanations.push('Domain name appears randomly generated');
+      explanations.push('Domain name appears randomly generated (high entropy)');
     }
 
     // 5. Punycode / homograph
     if (hostname.startsWith('xn--') || /[^\x00-\x7F]/.test(hostname)) {
       signals.push(createSignal(URL_SIGNALS.PUNYCODE_HOMOGRAPH));
-      explanations.push('Uses international characters (possible impersonation)');
+      explanations.push('Uses international characters (possible homograph attack)');
     }
 
     // 6. Excessive subdomains
     const subCount = hostname.split('.').length - 2;
     if (subCount >= 3) {
       signals.push(createSignal(URL_SIGNALS.EXCESSIVE_SUBDOMAINS, `${subCount} subdomains detected`));
-      explanations.push(`Has ${subCount} subdomains (possible spoofing)`);
+      explanations.push(`Has ${subCount} subdomains (possible domain spoofing)`);
     }
 
     // 7. @ symbol
@@ -129,32 +183,32 @@ const analyzeUrl = async (url, options = {}) => {
     // 8. Non-standard port
     if (parsed.port && !['80', '443', ''].includes(parsed.port)) {
       signals.push(createSignal(URL_SIGNALS.NON_STANDARD_PORT, `Port ${parsed.port} detected`));
-      explanations.push(`Contains port number (${parsed.port})`);
+      explanations.push(`Uses non-standard port (${parsed.port})`);
     }
 
     // 9. No HTTPS
     if (parsed.protocol === 'http:') {
       signals.push(createSignal(URL_SIGNALS.NO_HTTPS));
-      explanations.push('Uses HTTP instead of HTTPS (unencrypted)');
+      explanations.push('Uses HTTP instead of HTTPS (unencrypted connection)');
     }
 
     // 10. Phishing keywords
     const kw = PHISHING_KEYWORDS.filter((k) => pathAndQuery.includes(k) || (hostname.includes(k) && !hostname.endsWith(`.${k}.com`)));
     if (kw.length > 0) {
       signals.push(createSignal(URL_SIGNALS.PHISHING_KEYWORDS, `Keywords: ${kw.join(', ')}`));
-      explanations.push(`Matches known phishing patterns (${kw.join(', ')})`);
+      explanations.push(`Contains phishing-related keywords: ${kw.join(', ')}`);
     }
 
     // 11. Long URL
     if (url.length > 200) {
       signals.push(createSignal(URL_SIGNALS.LONG_URL, `URL is ${url.length} characters`));
-      explanations.push('Unusually long URL');
+      explanations.push('Unusually long URL (may hide true destination)');
     }
 
     // 12. Double encoding
     if (/%25|%2520/.test(url)) {
       signals.push(createSignal(URL_SIGNALS.DOUBLE_ENCODING));
-      explanations.push('Contains double-encoded characters (obfuscation)');
+      explanations.push('Contains double-encoded characters (obfuscation technique)');
     }
 
     // 13. Redirect params
@@ -164,11 +218,36 @@ const analyzeUrl = async (url, options = {}) => {
       explanations.push(`Contains redirect parameter (${rp.join(', ')})`);
     }
 
-    // 14. Google Safe Browsing
+    // 14. Brand impersonation
+    const impersonations = detectBrandImpersonation(hostname);
+    for (const imp of impersonations) {
+      signals.push(createSignal(URL_SIGNALS.BRAND_IMPERSONATION, `Impersonates ${imp.brand} (real: ${imp.realDomain})`));
+      explanations.push(`This URL impersonates "${imp.brand}" — the real domain is ${imp.realDomain}`);
+    }
+
+    // 15. URL Intelligence module (advanced structural analysis)
+    const urlIntel = analyzeUrlIntelligence(url);
+    if (urlIntel.signals) {
+      for (const intelSig of urlIntel.signals) {
+        // Avoid duplicate signal types
+        if (!signals.some(s => s.type === intelSig.type)) {
+          signals.push({
+            type: intelSig.type,
+            weight: intelSig.weight,
+            category: intelSig.category,
+            label: intelSig.label,
+            detail: intelSig.label,
+          });
+          explanations.push(intelSig.label);
+        }
+      }
+    }
+
+    // 16. Google Safe Browsing
     const sb = await checkGoogleSafeBrowsing(url);
     if (sb.isMalicious) {
       signals.push(createSignal(URL_SIGNALS.SAFE_BROWSING_FLAG, `Threat: ${sb.threatType}`));
-      explanations.push(`Flagged by Google Safe Browsing as ${sb.threatType}`);
+      explanations.push(`⚠️ Flagged by Google Safe Browsing as ${sb.threatType}`);
     }
 
   } catch (err) {
@@ -176,7 +255,16 @@ const analyzeUrl = async (url, options = {}) => {
     explanations.push('URL could not be parsed (malformed)');
   }
 
-  const response = buildScanResponse({ type: 'url', input: url, signals, explanation: explanations, details: { totalChecks: 14, flaggedChecks: signals.length } });
+  const response = buildScanResponse({
+    type: 'url',
+    input: url,
+    signals,
+    explanation: explanations,
+    details: {
+      totalChecks: 16,
+      flaggedChecks: signals.length,
+    },
+  });
 
   // AI-enhanced explanation
   if (signals.length > 0 && response.riskScore > 20) {
@@ -204,15 +292,27 @@ const analyzeUrl = async (url, options = {}) => {
 // ── Google Safe Browsing ─────────────────────
 
 const checkGoogleSafeBrowsing = async (url) => {
+  const { GOOGLE_SAFE_BROWSING_API_KEY } = require('../config/env');
   if (!GOOGLE_SAFE_BROWSING_API_KEY) return { isMalicious: false };
   try {
     const endpoint = `https://safebrowsing.googleapis.com/v4/threatMatches:find?key=${GOOGLE_SAFE_BROWSING_API_KEY}`;
-    const body = { client: { clientId: 'scam-detection-platform', clientVersion: '1.0.0' }, threatInfo: { threatTypes: ['MALWARE', 'SOCIAL_ENGINEERING', 'UNWANTED_SOFTWARE', 'POTENTIALLY_HARMFUL_APPLICATION'], platformTypes: ['ANY_PLATFORM'], threatEntryTypes: ['URL'], threatEntries: [{ url }] } };
+    const body = {
+      client: { clientId: 'scam-detection-platform', clientVersion: '1.0.0' },
+      threatInfo: {
+        threatTypes: ['MALWARE', 'SOCIAL_ENGINEERING', 'UNWANTED_SOFTWARE', 'POTENTIALLY_HARMFUL_APPLICATION'],
+        platformTypes: ['ANY_PLATFORM'],
+        threatEntryTypes: ['URL'],
+        threatEntries: [{ url }],
+      },
+    };
     const res = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await res.json();
     if (data.matches && data.matches.length > 0) return { isMalicious: true, threatType: data.matches[0].threatType };
     return { isMalicious: false };
-  } catch (e) { logger.error(`Safe Browsing error: ${e.message}`); return { isMalicious: false }; }
+  } catch (e) {
+    logger.error(`Safe Browsing error: ${e.message}`);
+    return { isMalicious: false };
+  }
 };
 
 module.exports = { analyzeUrl };

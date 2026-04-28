@@ -8,14 +8,30 @@ const rateLimiter = require('./middlewares/rateLimiter.middleware');
 const errorHandler = require('./middlewares/error.middleware');
 const routes = require('./routes');
 const logger = require('./utils/logger');
+const { CORS_ORIGIN, NODE_ENV } = require('./config/env');
 
 const app = express();
+
+// ── Trust proxy (for deployment behind reverse proxy) ──
+if (NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
 
 // ──────────────────────────────────────────────
 // Security Middleware
 // ──────────────────────────────────────────────
 app.use(helmet());                       // Set security HTTP headers
-app.use(cors({ origin: '*' }));          // Enable CORS (configure for production)
+
+// CORS — supports comma-separated origins from CORS_ORIGIN env var
+const corsOrigin = CORS_ORIGIN === '*'
+  ? true  // Allow all origins
+  : CORS_ORIGIN.split(',').map(o => o.trim());
+app.use(cors({
+  origin: corsOrigin,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(rateLimiter);                    // Rate limiting
 
 // ──────────────────────────────────────────────
@@ -53,15 +69,26 @@ app.use(
 app.use('/api/v1', routes);
 
 // ──────────────────────────────────────────────
-// 404 handler for unknown routes
+// Production: Serve Client Build
 // ──────────────────────────────────────────────
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    statusCode: 404,
-    message: `Route not found: ${req.method} ${req.originalUrl}`,
+if (NODE_ENV === 'production') {
+  const clientBuildPath = path.join(__dirname, '../client/dist');
+  app.use(express.static(clientBuildPath));
+
+  // SPA catch-all: serve index.html for any non-API route
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
-});
+} else {
+  // Development: 404 handler for unknown routes
+  app.use((req, res) => {
+    res.status(404).json({
+      success: false,
+      statusCode: 404,
+      message: `Route not found: ${req.method} ${req.originalUrl}`,
+    });
+  });
+}
 
 // ──────────────────────────────────────────────
 // Global Error Handler (must be last)

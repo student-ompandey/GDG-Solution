@@ -1,6 +1,53 @@
 import { Link } from 'react-router-dom';
 import { Link2, MessageSquare, QrCode, Image as ImageIcon, ArrowRight, Terminal, Copy, Check, Activity, Server, Code, Cpu, ShieldAlert, Sparkles, Eye, Zap, Globe, Smartphone, Monitor, Database, Cloud, Share2, Shield, Mail, Layers, GitBranch, Hash, RefreshCw, Search, Wrench, Clock, Mic, Brain, ShieldCheck, Users, FileText, Radar, LayoutGrid, Circle, Heart, ChevronRight, Triangle, Atom, Wind, UploadCloud, MicOff, ImageOff, CreditCard, UserX, Ghost, Fingerprint, Lock, MessageCircle, Send } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+
+// Animated counter hook
+function useCounter(end, duration = 2000, start = 0) {
+  const [count, setCount] = useState(start);
+  const [triggered, setTriggered] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting && !triggered) setTriggered(true); },
+      { threshold: 0.3 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [triggered]);
+
+  useEffect(() => {
+    if (!triggered) return;
+    let raf;
+    const t0 = performance.now();
+    const tick = (now) => {
+      const p = Math.min((now - t0) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setCount(Math.round(start + (end - start) * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [triggered, end, duration, start]);
+
+  return { count, ref };
+}
+
+// Scroll reveal hook
+function useReveal() {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
+      { threshold: 0.15 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+  return { ref, visible };
+}
 
 const features = [
   { icon: Link2, title: 'URL Scanner', desc: 'Detect phishing links, IP-based URLs, and suspicious redirects in real time using heuristic analysis.' },
@@ -12,6 +59,17 @@ const features = [
 export default function Home() {
   const [copied, setCopied] = useState(false);
   const [apiCopied, setApiCopied] = useState(false);
+
+  // Animated counters
+  const accuracy = useCounter(99, 1800);
+  const threats = useCounter(12, 1500);
+  const latency = useCounter(850, 1600);
+
+  // Section reveals
+  const statsReveal = useReveal();
+  const bentoReveal = useReveal();
+  const featuresReveal = useReveal();
+  const apiReveal = useReveal();
 
   const copyCommand = () => {
     navigator.clipboard.writeText('npm create scamshield-agent@latest');
@@ -78,11 +136,30 @@ export default function Home() {
           from { transform: translateX(-50%); }
           to { transform: translateX(0); }
         }
+        @keyframes hero-grid-fade {
+          0% { opacity: 0.03; }
+          50% { opacity: 0.08; }
+          100% { opacity: 0.03; }
+        }
+        @keyframes hero-glow {
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.7; transform: scale(1.1); }
+        }
+        .reveal-up {
+          opacity: 0; transform: translateY(30px);
+          transition: opacity 0.7s ease, transform 0.7s ease;
+        }
+        .reveal-up.visible {
+          opacity: 1; transform: translateY(0);
+        }
       `}</style>
 
       {/* ── Hero Section ── */}
-      <section className="flex flex-col items-center pt-28 pb-32 text-center relative">
-        <div className="absolute top-0 inset-x-0 h-[500px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[var(--color-signal)]/10 via-transparent to-transparent opacity-50 pointer-events-none"></div>
+      <section className="flex flex-col items-center pt-28 pb-32 text-center relative overflow-hidden">
+        {/* Animated gradient glow */}
+        <div className="absolute top-0 inset-x-0 h-[600px] bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[var(--color-signal)]/12 via-transparent to-transparent pointer-events-none" style={{ animation: 'hero-glow 6s ease-in-out infinite' }}></div>
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_#1a1a1a_1px,_transparent_1px)] bg-[size:32px_32px] pointer-events-none" style={{ animation: 'hero-grid-fade 8s ease-in-out infinite' }}></div>
         
         {/* Overline Badge */}
         <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-[var(--color-charcoal)] bg-[var(--color-carbon)] px-4 py-1.5 shadow-[var(--shadow-ambient)]">
@@ -91,7 +168,7 @@ export default function Home() {
         </div>
 
         {/* Compressed Authority Heading */}
-        <h1 className="max-w-4xl font-display text-5xl sm:text-7xl font-normal text-[var(--color-snow)] tracking-[-1.5px] leading-[1.05] mb-8">
+        <h1 className="max-w-4xl font-display text-3xl sm:text-5xl md:text-7xl font-normal text-[var(--color-snow)] tracking-[-1.5px] leading-[1.05] mb-8">
           The Intelligent Agent for{' '}
           <span className="text-[var(--color-signal)] relative inline-block">
             Threat Detection
@@ -99,15 +176,15 @@ export default function Home() {
           </span>
         </h1>
 
-        <p className="max-w-2xl text-lg sm:text-xl text-[var(--color-parchment)] leading-relaxed mb-12 font-medium">
+        <p className="max-w-2xl text-base sm:text-lg md:text-xl text-[var(--color-parchment)] leading-relaxed mb-12 font-medium px-2">
           Deploy deep-space terminal security. Scan links, extracted OCR text, and structural QR data instantly with autonomous AI heuristics.
         </p>
 
         {/* Terminal / Code Hero CTA */}
-        <div className="flex flex-col sm:flex-row items-center gap-6">
+        <div className="flex flex-col items-center gap-4 sm:gap-6 w-full px-2">
           {/* Main Code CTA */}
-          <div className="flex items-center justify-between rounded-md border-[3px] border-[var(--color-charcoal)] bg-[var(--color-carbon)] p-1.5 pl-5 pr-2 shadow-[var(--shadow-dramatic)] w-full sm:w-auto min-w-[320px] transition-all hover:border-[var(--color-steel)]">
-            <span className="font-mono text-[14px] text-[var(--color-snow)] opacity-90 tracking-tight">npm create scamshield-agent@latest</span>
+          <div className="flex items-center justify-between rounded-md border-[3px] border-[var(--color-charcoal)] bg-[var(--color-carbon)] p-1.5 pl-4 sm:pl-5 pr-2 shadow-[var(--shadow-dramatic)] w-full sm:w-auto sm:min-w-[320px] transition-all hover:border-[var(--color-steel)]">
+            <span className="font-mono text-[12px] sm:text-[14px] text-[var(--color-snow)] opacity-90 tracking-tight">npm create scamshield-agent@latest</span>
             <button 
               onClick={copyCommand}
               className="ml-6 flex items-center justify-center rounded bg-transparent p-2 text-[var(--color-parchment)] hover:text-[var(--color-snow)] hover:bg-black/30 transition-all border border-transparent hover:border-[var(--color-charcoal)]"
@@ -131,8 +208,8 @@ export default function Home() {
       </section>
 
       {/* ── System Telemetry (Live Analytics) ── */}
-      <section className="mb-32">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto border-y border-[var(--color-charcoal)] py-10 bg-[var(--color-carbon)]/30 backdrop-blur-sm relative overflow-hidden rounded-xl px-10">
+      <section className="mb-32" ref={statsReveal.ref}>
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto border-y border-[var(--color-charcoal)] py-10 bg-[var(--color-carbon)]/30 backdrop-blur-sm relative overflow-hidden rounded-xl px-10 reveal-up ${statsReveal.visible ? 'visible' : ''}`}>
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5 pointer-events-none"></div>
           
           <div className="flex flex-col items-center justify-center text-center">
@@ -143,7 +220,7 @@ export default function Home() {
               </span>
               <span className="font-mono text-xs text-[var(--color-steel)] uppercase tracking-widest">Detection Accuracy</span>
             </div>
-            <span className="font-mono text-4xl font-bold text-[var(--color-snow)]">99.8%</span>
+            <span className="font-mono text-4xl font-bold text-[var(--color-snow)]" ref={accuracy.ref}>{accuracy.count}.8<span className="text-xl text-[var(--color-signal)]">%</span></span>
           </div>
 
           <div className="flex flex-col items-center justify-center text-center border-y md:border-y-0 md:border-x border-[var(--color-charcoal)] py-6 md:py-0">
@@ -151,7 +228,7 @@ export default function Home() {
               <Activity className="h-3 w-3 text-purple-400" />
               <span className="font-mono text-xs text-[var(--color-steel)] uppercase tracking-widest">Threats Neutralized</span>
             </div>
-            <span className="font-mono text-4xl font-bold text-[var(--color-snow)]">1.2M+</span>
+            <span className="font-mono text-4xl font-bold text-[var(--color-snow)]" ref={threats.ref}>{threats.count > 0 ? `${threats.count / 10}` : '0'}M<span className="text-xl text-purple-400">+</span></span>
           </div>
 
           <div className="flex flex-col items-center justify-center text-center">
@@ -159,7 +236,7 @@ export default function Home() {
               <Server className="h-3 w-3 text-cyan-400" />
               <span className="font-mono text-xs text-[var(--color-steel)] uppercase tracking-widest">Avg Scan Latency</span>
             </div>
-            <span className="font-mono text-4xl font-bold text-[var(--color-snow)]">850<span className="text-xl text-[var(--color-steel)]">ms</span></span>
+            <span className="font-mono text-4xl font-bold text-[var(--color-snow)]" ref={latency.ref}>{latency.count}<span className="text-xl text-cyan-400">ms</span></span>
           </div>
         </div>
       </section>
@@ -216,8 +293,8 @@ export default function Home() {
       </section>
 
       {/* ── Core Infrastructure (Bento Grid) ── */}
-      <section className="mb-32 max-w-6xl mx-auto">
-        <div className="mb-12">
+      <section className="mb-32 max-w-6xl mx-auto" ref={bentoReveal.ref}>
+        <div className={`mb-12 reveal-up ${bentoReveal.visible ? 'visible' : ''}`}>
           <h2 className="font-display text-4xl font-normal tracking-[-0.9px] text-[var(--color-snow)] leading-[1.11] mb-3">
             Core <span className="text-[var(--color-signal)]">Infrastructure</span>
           </h2>
@@ -227,7 +304,7 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-3 grid-rows-2 gap-6 h-auto md:h-[500px]">
           
           {/* Grid Item 1: Gemini AI (Spans 2 columns) */}
-          <div className="md:col-span-2 md:row-span-1 rounded-xl border border-[var(--color-charcoal)] bg-[var(--color-carbon)] overflow-hidden relative group shadow-[var(--shadow-ambient)]">
+          <div className={`md:col-span-2 md:row-span-1 rounded-xl border border-[var(--color-charcoal)] bg-[var(--color-carbon)] overflow-hidden relative group shadow-[var(--shadow-ambient)] transition-all duration-500 hover:border-purple-500/30 hover:shadow-[0_0_30px_rgba(139,92,246,0.1)] reveal-up ${bentoReveal.visible ? 'visible' : ''}`} style={{ transitionDelay: '100ms' }}>
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent pointer-events-none transition-opacity group-hover:opacity-100 opacity-50"></div>
             <div className="p-8 h-full flex flex-col justify-between relative z-10">
               <div>
@@ -249,7 +326,7 @@ export default function Home() {
           </div>
 
           {/* Grid Item 2: Heuristic Analysis */}
-          <div className="md:col-span-1 md:row-span-2 rounded-xl border border-[var(--color-charcoal)] bg-[var(--color-carbon)] overflow-hidden relative group shadow-[var(--shadow-ambient)] flex flex-col">
+          <div className={`md:col-span-1 md:row-span-2 rounded-xl border border-[var(--color-charcoal)] bg-[var(--color-carbon)] overflow-hidden relative group shadow-[var(--shadow-ambient)] flex flex-col transition-all duration-500 hover:border-[var(--color-signal)]/30 hover:shadow-[0_0_30px_rgba(0,217,146,0.1)] reveal-up ${bentoReveal.visible ? 'visible' : ''}`} style={{ transitionDelay: '200ms' }}>
             <div className="p-8 flex-1">
               <div className="inline-flex items-center gap-2 rounded border border-[var(--color-signal)]/30 bg-[var(--color-abyss)] px-3 py-1 mb-4">
                 <ShieldAlert className="h-3.5 w-3.5 text-[var(--color-signal)]" />
@@ -278,7 +355,7 @@ export default function Home() {
           </div>
 
           {/* Grid Item 3: OCR Pipeline */}
-          <div className="md:col-span-2 md:row-span-1 rounded-xl border border-[var(--color-charcoal)] bg-[var(--color-carbon)] overflow-hidden relative group shadow-[var(--shadow-ambient)]">
+          <div className={`md:col-span-2 md:row-span-1 rounded-xl border border-[var(--color-charcoal)] bg-[var(--color-carbon)] overflow-hidden relative group shadow-[var(--shadow-ambient)] transition-all duration-500 hover:border-cyan-500/30 hover:shadow-[0_0_30px_rgba(6,182,212,0.1)] reveal-up ${bentoReveal.visible ? 'visible' : ''}`} style={{ transitionDelay: '300ms' }}>
             <div className="absolute inset-0 bg-[var(--color-charcoal)]/10 pattern-diagonal-lines pattern-[var(--color-charcoal)] pattern-size-4 pointer-events-none"></div>
             <div className="p-8 h-full flex flex-col md:flex-row items-center gap-8 relative z-10">
               <div className="flex-1">
@@ -459,8 +536,8 @@ export default function Home() {
 
       {/* ── Feature Cards (VoltAgent Style) ── */}
 
-      <section className="mb-32 max-w-6xl mx-auto">
-        <div className="mb-12 text-center">
+      <section className="mb-32 max-w-6xl mx-auto" ref={featuresReveal.ref}>
+        <div className={`mb-12 text-center reveal-up ${featuresReveal.visible ? 'visible' : ''}`}>
           <h2 className="mb-3 font-display text-4xl font-normal tracking-[-0.9px] text-[var(--color-snow)] leading-[1.11]">
             Multi-Vector <span className="text-[var(--color-signal)]">Coverage</span>
           </h2>
@@ -502,7 +579,7 @@ export default function Home() {
       </section>
 
       {/* ── Developer API Mockup ── */}
-      <section className="mb-20 max-w-4xl mx-auto rounded-xl border border-[var(--color-charcoal)] bg-[var(--color-carbon)] overflow-hidden shadow-[var(--shadow-ambient)]">
+      <section className={`mb-20 max-w-4xl mx-auto rounded-xl border border-[var(--color-charcoal)] bg-[var(--color-carbon)] overflow-hidden shadow-[var(--shadow-ambient)] reveal-up ${apiReveal.visible ? 'visible' : ''}`} ref={apiReveal.ref}>
         <div className="flex flex-col md:flex-row">
           <div className="p-10 flex-1 border-b md:border-b-0 md:border-r border-[var(--color-charcoal)]">
             <div className="inline-flex items-center gap-2 rounded border border-[var(--color-charcoal)] bg-[var(--color-abyss)] px-3 py-1 mb-6">

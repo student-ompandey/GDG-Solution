@@ -103,13 +103,13 @@ export default function Scan({ setLatestScan }) {
       <div className="text-center mb-10">
         <div className="inline-flex items-center gap-2 mb-4">
           <Terminal className="h-5 w-5 text-[var(--color-signal)]" />
-          <h1 className="font-display text-4xl font-normal text-[var(--color-snow)] tracking-tight">Threat Analysis</h1>
+          <h1 className="font-display text-2xl sm:text-4xl font-normal text-[var(--color-snow)] tracking-tight">Threat Analysis</h1>
         </div>
         <p className="text-[var(--color-steel)] font-mono text-sm tracking-tight">System Workflow: Upload → Preview → Scan → Compile Results</p>
       </div>
 
       {/* Step Indicator (Terminal Style) */}
-      <div className="mb-8 flex items-center justify-center gap-3 text-xs font-mono text-[var(--color-steel)]">
+      <div className="mb-8 flex flex-wrap items-center justify-center gap-2 sm:gap-3 text-[10px] sm:text-xs font-mono text-[var(--color-steel)]">
         <span className={`flex items-center gap-2 px-2 py-1 transition-colors ${!result && !loading ? 'text-[var(--color-signal)]' : 'opacity-50'}`}>
           <span className="opacity-50">[1]</span> UPLOAD
         </span>
@@ -230,18 +230,19 @@ export default function Scan({ setLatestScan }) {
               className="flex items-center gap-1.5 rounded bg-transparent px-3 py-1.5 text-xs font-mono text-[var(--color-steel)] border border-[var(--color-charcoal)] transition-colors hover:bg-[var(--color-charcoal)] hover:text-[var(--color-snow)]"
             >
               <RotateCcw className="h-3 w-3" />
-              CLEAR
+              {lang === 'hi' ? 'साफ़' : 'CLEAR'}
             </button>
             <button
               onClick={() => setLang(lang === 'en' ? 'hi' : 'en')}
-              className={`flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-mono border transition-colors ${
+              className={`flex items-center gap-1.5 rounded px-4 py-1.5 text-xs font-mono font-bold border transition-all ${
                 lang === 'hi' 
-                  ? 'bg-[var(--color-signal)]/10 text-[var(--color-signal)] border-[var(--color-signal)]' 
+                  ? 'bg-[var(--color-signal)]/10 text-[var(--color-signal)] border-[var(--color-signal)] shadow-[0_0_8px_rgba(0,217,146,0.15)]' 
                   : 'bg-transparent text-[var(--color-steel)] border-[var(--color-charcoal)] hover:bg-[var(--color-charcoal)] hover:text-[var(--color-snow)]'
               }`}
+              title={lang === 'hi' ? 'Switch to English' : 'हिंदी में बदलें'}
             >
-              <Languages className="h-3 w-3" />
-              {lang === 'hi' ? 'LANG:HI' : 'LANG:EN'}
+              <Languages className="h-3.5 w-3.5" />
+              {lang === 'hi' ? 'हिंदी' : 'ENGLISH'}
             </button>
           </div>
 
@@ -251,7 +252,7 @@ export default function Scan({ setLatestScan }) {
             className="flex w-full sm:w-auto items-center justify-center gap-2 rounded-md border border-transparent bg-[var(--color-carbon)] px-8 py-2.5 font-medium text-[var(--color-mint)] ring-1 ring-[var(--color-signal)]/80 transition-all shadow-[0_0_10px_rgba(0,217,146,0.1)] hover:bg-black/20 hover:shadow-[0_0_15px_rgba(0,217,146,0.3)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-[0_0_10px_rgba(0,217,146,0.1)]"
           >
             <Search className="h-4 w-4" />
-            {loading ? 'EXECUTING...' : 'INITIALIZE SCAN'}
+            {loading ? (lang === 'hi' ? 'स्कैन हो रहा...' : 'EXECUTING...') : (lang === 'hi' ? 'स्कैन शुरू करें' : 'INITIALIZE SCAN')}
           </button>
         </div>
       </div>

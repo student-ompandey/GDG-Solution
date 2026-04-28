@@ -24,7 +24,7 @@ const getClient = () => {
   return genAI;
 };
 
-const MODELS = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-pro', 'gemini-1.5-flash-8b'];
+const MODELS = ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-2.5-pro'];
 
 const getModel = (modelName = MODELS[0]) => {
   const client = getClient();
@@ -33,7 +33,15 @@ const getModel = (modelName = MODELS[0]) => {
 };
 
 /**
- * Call Gemini with automatic model fallback on quota errors.
+ * Determine if a Gemini error is retryable (quota, rate-limit, or temporary unavailability).
+ */
+const isRetryableError = (error) => {
+  const msg = error.message || '';
+  return msg.includes('429') || msg.includes('quota') || msg.includes('503') || msg.includes('Service Unavailable') || msg.includes('high demand') || msg.includes('RESOURCE_EXHAUSTED');
+};
+
+/**
+ * Call Gemini with automatic model fallback on quota/availability errors.
  * Tries each model in the MODELS list until one succeeds.
  */
 const callWithFallback = async (contentParts) => {
@@ -46,9 +54,8 @@ const callWithFallback = async (contentParts) => {
       const result = await model.generateContent(contentParts);
       return result;
     } catch (error) {
-      const is429 = error.message?.includes('429') || error.message?.includes('quota');
-      if (is429 && modelName !== MODELS[MODELS.length - 1]) {
-        logger.warn(`Gemini ${modelName} quota hit, trying next model...`);
+      if (isRetryableError(error) && modelName !== MODELS[MODELS.length - 1]) {
+        logger.warn(`Gemini ${modelName} unavailable, trying next model...`);
         continue;
       }
       throw error;
@@ -331,21 +338,86 @@ const isAvailable = async () => {
 // 6. Chatbot Assistant
 // ──────────────────────────────────────────────
 
-const CHAT_SYSTEM_PROMPT = `You are ScamShield AI, a cybersecurity assistant that explains scam detection results and helps users understand online threats in simple language.
-Your goal is to help users understand why something was flagged as risky, whether it's safe to open, and what they should do next.
-Tone: Simple, non-technical, helpful, and slightly cautionary. Avoid long paragraphs.
-Safety: If the user asks unrelated questions, gently redirect them to security topics.`;
+const CHAT_SYSTEM_PROMPT = `You are ScamShield AI — a concise cybersecurity assistant.
+
+RULES (STRICT):
+1. Keep ALL replies under 3-4 sentences maximum. Never write long paragraphs.
+2. Use simple, non-technical language a 10-year-old could understand.
+3. If user writes in Hindi (Devanagari script or Hinglish), respond ENTIRELY in Hindi using Devanagari script.
+4. If user writes in English, respond in English.
+5. For scan results: give a 1-line verdict, 1-line reason, and 1-line action step.
+6. Never use bullet lists with more than 3 items.
+7. If the user asks something unrelated to security, say "I only help with online safety" in their language.
+
+EXAMPLE (English):
+User: "Is this link safe?"
+You: "This link looks suspicious — it uses a fake domain to impersonate PayPal. Don't click it. Block the sender and delete the message."
+
+EXAMPLE (Hindi):
+User: "क्या ये लिंक सुरक्षित है?"
+You: "यह लिंक खतरनाक है — यह नकली डोमेन इस्तेमाल कर रहा है। इसे न खोलें और भेजने वाले को ब्लॉक करें।"
+
+EXAMPLE (Hinglish):
+User: "ye message safe hai kya?"
+You: "Yeh message scam hai — OTP maangna aur urgency dikhana scam ke clear signs hain. Reply mat karo aur sender ko block karo."`;
+
+/**
+ * Sanitize chat history to ensure it follows Gemini's strict alternating
+ * user/model turn requirement.  Drops any messages that would break the
+ * pattern and ensures the sequence starts with a 'user' turn.
+ *
+ * @param {Array} rawHistory - Raw messages from the frontend [{role, text}]
+ * @returns {Array} Gemini-compatible history [{role, parts: [{text}]}]
+ */
+const sanitizeHistory = (rawHistory) => {
+  if (!Array.isArray(rawHistory) || rawHistory.length === 0) return [];
+
+  // Convert to Gemini format
+  const converted = rawHistory.map(msg => ({
+    role: msg.role === 'user' ? 'user' : 'model',
+    parts: [{ text: msg.text || (Array.isArray(msg.parts) ? msg.parts[0]?.text : '') || '' }],
+  }));
+
+  // Filter out empty messages
+  const nonEmpty = converted.filter(msg => msg.parts[0].text.trim().length > 0);
+
+  // Ensure alternating roles — drop consecutive same-role messages (keep the last one)
+  const alternating = [];
+  for (const msg of nonEmpty) {
+    if (alternating.length > 0 && alternating[alternating.length - 1].role === msg.role) {
+      // Replace the last one with this one (keep the more recent message)
+      alternating[alternating.length - 1] = msg;
+    } else {
+      alternating.push(msg);
+    }
+  }
+
+  // Gemini requires history to start with 'user'
+  while (alternating.length > 0 && alternating[0].role !== 'user') {
+    alternating.shift();
+  }
+
+  // Gemini requires history to end with 'model' (the current user message is sent via sendMessage)
+  while (alternating.length > 0 && alternating[alternating.length - 1].role !== 'model') {
+    alternating.pop();
+  }
+
+  return alternating;
+};
 
 /**
  * Handle a chat message with the ScamShield Assistant.
- * @param {Array} history - Previous chat messages [{role: 'user'|'model', parts: [{text: string}]}]
+ * @param {Array} history - Previous chat messages [{role: 'user'|'model', text: string}]
  * @param {string} message - The new message from the user
  * @param {object} context - Optional context about the latest scan result
  * @returns {Promise<string|null>} The AI's response text
  */
 const chatWithAI = async (history = [], message, context = null) => {
   const client = getClient();
-  if (!client) return null;
+  if (!client) {
+    logger.error('Gemini chatWithAI: No API key configured');
+    return null;
+  }
 
   try {
     let finalMessage = message;
@@ -355,16 +427,8 @@ const chatWithAI = async (history = [], message, context = null) => {
       finalMessage = `[SYSTEM CONTEXT: The user just ran a scan on the following content: "${context.input.substring(0, 500)}". The scan result was a risk score of ${context.riskScore}/100. Signals: ${context.signals?.map(s => s.type).join(', ') || 'none'}. Explanation: ${JSON.stringify(context.explanation)}]\n\nUser Message: ${message}`;
     }
 
-    // Convert history format to Gemini format and limit to last 4 messages to save tokens
-    let formattedHistory = (history || []).slice(-4).map(msg => ({
-      role: msg.role === 'user' ? 'user' : 'model',
-      parts: Array.isArray(msg.parts) ? msg.parts : [{ text: msg.text || '' }]
-    }));
-
-    // Gemini requires the first message to be from the 'user'
-    if (formattedHistory.length === 0 || formattedHistory[0].role !== 'user') {
-      formattedHistory.unshift({ role: 'user', parts: [{ text: 'Hello' }] });
-    }
+    // Build a clean, Gemini-compatible history (limit to last 10 messages for context)
+    const formattedHistory = sanitizeHistory((history || []).slice(-10));
 
     for (const modelName of MODELS) {
       try {
@@ -378,11 +442,35 @@ const chatWithAI = async (history = [], message, context = null) => {
         });
 
         const result = await chat.sendMessage([{ text: finalMessage }]);
-        return result.response.text().trim();
+        const responseText = result.response.text().trim();
+        
+        if (!responseText) {
+          logger.warn(`Gemini ${modelName} returned empty response, trying next...`);
+          continue;
+        }
+        
+        return responseText;
       } catch (error) {
-        const is429 = error.message?.includes('429') || error.message?.includes('quota');
-        if (is429 && modelName !== MODELS[MODELS.length - 1]) {
-          logger.warn(`Gemini ${modelName} quota hit in chat, trying next model...`);
+        const isHistoryError = error.message?.includes('history') || error.message?.includes('turn');
+        
+        if (isHistoryError) {
+          // If history causes issues, retry with no history
+          logger.warn(`Gemini ${modelName} history error, retrying without history...`);
+          try {
+            const model = client.getGenerativeModel({ 
+              model: modelName,
+              systemInstruction: CHAT_SYSTEM_PROMPT
+            });
+            const chat = model.startChat({ history: [] });
+            const result = await chat.sendMessage([{ text: finalMessage }]);
+            return result.response.text().trim();
+          } catch (retryError) {
+            logger.error(`Gemini ${modelName} retry without history also failed: ${retryError.message}`);
+          }
+        }
+        
+        if (isRetryableError(error) && modelName !== MODELS[MODELS.length - 1]) {
+          logger.warn(`Gemini ${modelName} unavailable in chat, trying next model...`);
           continue;
         }
         logger.error(`Gemini model ${modelName} chat error: ${error.message}`);
